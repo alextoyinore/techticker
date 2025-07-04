@@ -51,9 +51,10 @@ export default function AdminLayout({
   const { user, loading, logout } = useAuth();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    if (!user) {
       router.push("/");
-    } else if (!loading && user) {
+    } else {
       const allowedRoles = ['admin', 'superadmin', 'editor', 'writer'];
       if (!user.role || !allowedRoles.includes(user.role)) {
           router.push("/article"); // Redirect non-admin users to a public page
@@ -205,8 +206,15 @@ export default function AdminLayout({
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>{user?.displayName ?? user?.email}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/profile">Profile</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard">Dashboard</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/article">View Site</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
                 Logout

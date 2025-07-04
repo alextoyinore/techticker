@@ -6,6 +6,14 @@ import { useAuth, User } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -83,15 +91,38 @@ export default function ArticlePage() {
                 <span className="font-bold font-headline">TechTicker</span>
             </Link>
             <div className="flex items-center gap-2">
-                {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : user ? (
-                    <>
-                        {isAdmin && <Link href="/dashboard"><Button variant="outline">Dashboard</Button></Link>}
-                        <Button onClick={logout}>Logout</Button>
-                    </>
+                {loading ? (
+                  <LoaderCircle className="h-5 w-5 animate-spin" />
+                ) : user ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="rounded-full">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user?.photoURL ?? ''} alt={user?.displayName ?? ''} />
+                          <AvatarFallback>{user?.displayName?.charAt(0) ?? user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="sr-only">Toggle user menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>{user?.displayName ?? user?.email}</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/profile">Profile</Link>
+                      </DropdownMenuItem>
+                      {isAdmin && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/dashboard">Dashboard</Link>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 ) : (
-                    <Link href="/">
-                        <Button>Login</Button>
-                    </Link>
+                  <Link href="/">
+                    <Button>Login</Button>
+                  </Link>
                 )}
             </div>
         </header>
