@@ -1,6 +1,7 @@
 "use client"
 
-import { Plate, useEditorRef, toggleElement, Editor } from "@udecode/plate-common";
+import { Plate, useEditorRef, toggleElement } from "@udecode/plate-common";
+import { Editable } from "slate-react";
 import {
   MARK_BOLD,
   MARK_CODE,
@@ -103,12 +104,10 @@ export default function RichTextEditor() {
             </ToolbarGroup>
         </Toolbar>
         <div className="rounded-b-md border-input border p-4">
-             <Editor 
+             <Editable 
                 placeholder="Start writing your masterpiece..."
                 className="min-h-[400px] focus-visible:ring-0 focus-visible:ring-offset-0 border-none p-0"
                 autoFocus
-                focusRing={false}
-                variant="ghost"
              />
              <PlateFloatingToolbar />
         </div>
