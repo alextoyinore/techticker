@@ -65,13 +65,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
       if (firebaseUser) {
         const userData = await getUserDocument(firebaseUser);
-        setUser({ ...firebaseUser, role: userData?.role });
+        // Combine firebase user object with firestore user data
+        setUser({ ...firebaseUser, ...userData });
       } else {
         setUser(null);
       }
+      // Only set loading to false after user state is fully resolved.
       setLoading(false);
     });
 
