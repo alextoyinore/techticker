@@ -9,7 +9,7 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, DocumentData } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -31,20 +31,32 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const createUserDocument = async (user: FirebaseUser) => {
+const getUserDocument = async (user: FirebaseUser): Promise<DocumentData | null> => {
+  if (!user) return null;
   const userRef = doc(db, 'users', user.uid);
-  const userDoc = await getDoc(userRef);
-  if (!userDoc.exists()) {
-    await setDoc(userRef, {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName || user.email?.split('@')[0],
-      photoURL: user.photoURL,
-      role: 'user', // Default role for all new sign-ups
-      createdAt: serverTimestamp(),
-    });
+  try {
+    const userDoc = await getDoc(userRef);
+    if (userDoc.exists()) {
+      return userDoc.data();
+    } else {
+        const newUser = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || user.email?.split('@')[0],
+          photoURL: user.photoURL,
+          role: 'user', // Default role for all new sign-ups
+          createdAt: serverTimestamp(),
+        };
+        await setDoc(userRef, newUser);
+        const { createdAt, ...rest } = newUser;
+        return rest;
+    }
+  } catch (error) {
+      console.error("Error fetching or creating user document:", error);
+      return null;
   }
 };
+
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -53,17 +65,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
       if (firebaseUser) {
-        await createUserDocument(firebaseUser);
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUser({ ...firebaseUser, role: userData.role });
-        } else {
-          // This case should ideally not be hit if createUserDocument works correctly
-          setUser(firebaseUser as User);
-        }
+        const userData = await getUserDocument(firebaseUser);
+        setUser({ ...firebaseUser, role: userData?.role });
       } else {
         setUser(null);
       }
@@ -76,7 +81,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
-    // onAuthStateChanged will handle user state update and redirection logic.
   };
 
   const signUpWithEmail = async (email: string, pass: string) => {

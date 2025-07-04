@@ -55,7 +55,7 @@ export default function AdminLayout({
       router.push("/");
     } else if (!loading && user) {
       const allowedRoles = ['admin', 'superadmin', 'editor', 'writer'];
-      if (!allowedRoles.includes(user.role as string)) {
+      if (!user.role || !allowedRoles.includes(user.role)) {
           router.push("/article"); // Redirect non-admin users to a public page
       }
     }
