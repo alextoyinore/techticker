@@ -1,17 +1,46 @@
+'use client';
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GripVertical, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
-const widgets = [
-  { name: "Hero Section", description: "A large, prominent hero section." },
-  { name: "Featured Posts", description: "A grid of featured articles." },
-  { name: "Call to Action", description: "A section with a CTA button." },
-  { name: "Newsletter Signup", description: "A form to collect emails." },
-  { name: "Image Gallery", description: "A masonry-style image gallery." },
-  { name: "Content Block", description: "A simple rich text block." },
-];
+interface Widget {
+  id: string;
+  name: string;
+  description: string;
+}
 
 export default function LayoutsPage() {
+  const [widgets, setWidgets] = useState<Widget[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchWidgets = async () => {
+        setLoading(true);
+        try {
+            const widgetsCollection = collection(db, "widgets");
+            const querySnapshot = await getDocs(widgetsCollection);
+            const widgetsData = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Widget[];
+            setWidgets(widgetsData);
+        } catch (error) {
+            console.error("Error fetching widgets:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch widgets.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchWidgets();
+  }, [toast]);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
       <div className="md:col-span-1 flex flex-col gap-6">
@@ -26,15 +55,30 @@ export default function LayoutsPage() {
             <CardTitle>Widgets</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            {widgets.map((widget) => (
-              <div key={widget.name} className="flex items-center gap-4 p-3 border rounded-lg bg-secondary/50 cursor-grab active:cursor-grabbing">
-                <GripVertical className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <h3 className="font-semibold">{widget.name}</h3>
-                  <p className="text-sm text-muted-foreground">{widget.description}</p>
+            {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4 p-3">
+                        <Skeleton className="h-5 w-5" />
+                        <div className="space-y-2">
+                           <Skeleton className="h-4 w-32" />
+                           <Skeleton className="h-3 w-48" />
+                        </div>
+                    </div>
+                ))
+            ) : (
+                widgets.map((widget) => (
+                <div key={widget.id} className="flex items-center gap-4 p-3 border rounded-lg bg-secondary/50 cursor-grab active:cursor-grabbing">
+                    <GripVertical className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                    <h3 className="font-semibold">{widget.name}</h3>
+                    <p className="text-sm text-muted-foreground">{widget.description}</p>
+                    </div>
                 </div>
-              </div>
-            ))}
+                ))
+            )}
+            { !loading && widgets.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center p-4">No widgets created yet.</p>
+            )}
           </CardContent>
         </Card>
       </div>

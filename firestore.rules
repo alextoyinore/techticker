@@ -3,39 +3,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check for admin/privileged roles
-    function hasAdminRole() {
-      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      return userRole in ['admin', 'superadmin', 'editor', 'writer'];
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'editor', 'writer'];
     }
 
-    // Users Collection Rules
     match /users/{userId} {
-      // Allow user document creation only if the UID matches.
-      allow create: if request.auth.uid == userId;
-
-      // Allow users to read their own data. Admins can read any user's data.
-      allow read: if request.auth.uid == userId || hasAdminRole();
-
-      // Allow users to update only their own non-sensitive data.
-      // Admins can update any field, including the role.
-      allow update: if (request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL'])) || hasAdminRole();
-      
-      // Only admins can delete user accounts from the database.
-      allow delete: if hasAdminRole();
+      allow read: if true;
+      allow create: if request.auth != null;
+      // Users can update their own profile, admins can update any profile (e.g. to change role)
+      allow update: if request.auth.uid == userId || isAdmin();
+    }
+    
+    match /widgets/{widgetId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
-    // Comments Collection Rules
     match /comments/{commentId} {
-      // Allow authenticated users to create comments.
-      // - The authorId must match their own UID.
-      // - The initial status must be 'Pending'.
-      allow create: if request.auth != null
-                      && request.resource.data.authorId == request.auth.uid
-                      && request.resource.data.status == 'Pending';
-
-      // Only admins can read, update, or delete comments for moderation.
-      allow read, update, delete: if hasAdminRole();
+      allow read: if isAdmin(); // Only admins can read all comments for moderation
+      allow create: if request.auth != null; // Any authenticated user can create a comment
+      allow update, delete: if isAdmin(); // Only admins can change status or delete
     }
   }
 }

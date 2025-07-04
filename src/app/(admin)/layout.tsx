@@ -8,6 +8,7 @@ import {
   LayoutPanelLeft,
   MessageSquare,
   PenSquare,
+  Puzzle,
   Search,
   Settings,
   Users,
@@ -120,6 +121,18 @@ export default function AdminLayout({
                   <Link href="/layouts">
                     <LayoutPanelLeft />
                     <span>Layouts</span>
+                  </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/widgets")}
+                  tooltip="Widgets"
+                >
+                  <Link href="/widgets">
+                    <Puzzle />
+                    <span>Widgets</span>
                   </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
