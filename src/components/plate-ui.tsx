@@ -7,8 +7,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-  createFloatingBalloons,
-  createFloatingToolbar,
   flip,
   offset,
   UseVirtualFloatingOptions,
@@ -249,11 +247,7 @@ const floatingLinkOptions: UseVirtualFloatingOptions = {
   ],
 };
 
-export const LinkFloatingToolbar = createFloatingToolbar(
-  ({
-    children,
-    ...props
-  }: React.ComponentProps<any>) => {
+export function LinkFloatingToolbar(props: React.ComponentProps<any>) {
     const state = useLinkToolbarButton({
       ...props,
       floatingOptions: floatingLinkOptions,
@@ -287,7 +281,6 @@ export const LinkFloatingToolbar = createFloatingToolbar(
       </PlatePopover>
     );
   }
-);
 
 export const TableElement = React.forwardRef<
   React.ElementRef<typeof PlateElement>,
@@ -454,61 +447,3 @@ export const PlateMarkToolbarButton = React.forwardRef<
   />
 ));
 PlateMarkToolbarButton.displayName = 'PlateMarkToolbarButton';
-
-export const PlateFloatingToolbar = createFloatingBalloons(
-  ({
-    children,
-    ...props
-  }: React.ComponentProps<typeof Toolbar> & {
-    floatingOptions?: UseVirtualFloatingOptions;
-  }) => {
-    const editor = useEditorState();
-    const { floatingOptions } = props;
-
-    const state = {
-      ...props,
-      floatingOptions: {
-        placement: 'top',
-        middleware: [offset(12), flip()],
-        ...floatingOptions,
-      },
-    };
-    if (
-      !isSelectionExpanded(editor) ||
-      isCollapsed(editor.selection) ||
-      !editor.selection
-    ) {
-      return null;
-    }
-
-    return (
-      <PlatePopover
-        open={state.isOpen}
-        onOpenChange={state.setIsOpen}
-        {...state.floatingProps}
-      >
-        <PlatePopoverContent
-          className={cn(
-            'flex items-center gap-1 rounded-md border bg-popover p-1'
-          )}
-        >
-          <PlateMarkToolbarButton nodeType={MARK_BOLD} tooltip="Bold (⌘+B)">
-            <Bold />
-          </PlateMarkToolbarButton>
-          <PlateMarkToolbarButton
-            nodeType={MARK_ITALIC}
-            tooltip="Italic (⌘+I)"
-          >
-            <Italic />
-          </PlateMarkToolbarButton>
-          <PlateMarkToolbarButton
-            nodeType={MARK_UNDERLINE}
-            tooltip="Underline (⌘+U)"
-          >
-            <Underline />
-          </PlateMarkToolbarButton>
-        </PlatePopoverContent>
-      </PlatePopover>
-    );
-  }
-);

@@ -33,7 +33,7 @@ import {
 import { plugins } from "@/lib/plate-plugins";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
-import { PlateMarkToolbarButton, PlateFloatingToolbar, Toolbar, ToolbarGroup } from "./plate-ui";
+import { PlateMarkToolbarButton, Toolbar, ToolbarGroup } from "./plate-ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,7 +109,6 @@ export default function RichTextEditor() {
                 className="min-h-[400px] focus-visible:ring-0 focus-visible:ring-offset-0 border-none p-0"
                 autoFocus
              />
-             <PlateFloatingToolbar />
         </div>
       </div>
     </Plate>
