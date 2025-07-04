@@ -66,82 +66,88 @@ export default function AdminLayout({
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <Link href="/dashboard" legacyBehavior passHref>
-                <SidebarMenuButton
-                  isActive={isActive("/dashboard")}
-                  tooltip="Dashboard"
-                >
+              <SidebarMenuButton
+                asChild
+                isActive={isActive("/dashboard")}
+                tooltip="Dashboard"
+              >
+                <Link href="/dashboard">
                   <LayoutGrid />
                   <span>Dashboard</span>
-                </SidebarMenuButton>
-              </Link>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/content" legacyBehavior passHref>
-                <SidebarMenuButton
-                  isActive={isActive("/content")}
-                  tooltip="Content"
-                >
+              <SidebarMenuButton
+                asChild
+                isActive={isActive("/content")}
+                tooltip="Content"
+              >
+                <Link href="/content">
                   <FileText />
                   <span>Content</span>
-                </SidebarMenuButton>
-              </Link>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/layouts" legacyBehavior passHref>
-                <SidebarMenuButton
-                  isActive={isActive("/layouts")}
-                  tooltip="Layouts"
-                >
+              <SidebarMenuButton
+                asChild
+                isActive={isActive("/layouts")}
+                tooltip="Layouts"
+              >
+                <Link href="/layouts">
                   <LayoutPanelLeft />
                   <span>Layouts</span>
-                </SidebarMenuButton>
-              </Link>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/comments" legacyBehavior passHref>
-                <SidebarMenuButton
-                  isActive={isActive("/comments")}
-                  tooltip="Comments"
-                >
+              <SidebarMenuButton
+                asChild
+                isActive={isActive("/comments")}
+                tooltip="Comments"
+              >
+                <Link href="/comments">
                   <MessageSquare />
                   <span>Comments</span>
-                </SidebarMenuButton>
-              </Link>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/users" legacyBehavior passHref>
-                <SidebarMenuButton isActive={isActive("/users")} tooltip="Users">
+              <SidebarMenuButton asChild isActive={isActive("/users")} tooltip="Users">
+                <Link href="/users">
                   <Users />
                   <span>Users</span>
-                </SidebarMenuButton>
-              </Link>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/editor" legacyBehavior passHref>
-                <SidebarMenuButton
-                  isActive={isActive("/editor")}
-                  tooltip="Editor"
-                >
+              <SidebarMenuButton
+                asChild
+                isActive={isActive("/editor")}
+                tooltip="Editor"
+              >
+                <Link href="/editor">
                   <PenSquare />
                   <span>Editor</span>
-                </SidebarMenuButton>
-              </Link>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <Link href="/settings" legacyBehavior passHref>
-                <SidebarMenuButton
-                  isActive={isActive("/settings")}
-                  tooltip="Settings"
-                >
+              <SidebarMenuButton
+                asChild
+                isActive={isActive("/settings")}
+                tooltip="Settings"
+              >
+                <Link href="/settings">
                   <Settings />
                   <span>Settings</span>
-                </SidebarMenuButton>
-              </Link>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
@@ -181,9 +187,9 @@ export default function AdminLayout({
               <DropdownMenuItem>Profile</DropdownMenuItem>
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <Link href="/">
-                <DropdownMenuItem>Logout</DropdownMenuItem>
-              </Link>
+              <DropdownMenuItem asChild>
+                <Link href="/">Logout</Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
