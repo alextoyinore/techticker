@@ -1,4 +1,9 @@
+'use client';
+
 import { MoreHorizontal, PlusCircle } from "lucide-react"
+import { useEffect, useState } from "react";
+import { collection, getDocs, query } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,21 +42,52 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton";
 
-const users = [
-    { name: "Ana Silva", email: "ana.silva@example.com", role: "Superadmin", joined: "2023-01-15", avatar: "https://placehold.co/40x40.png", fallback: "AS", aiHint: "female portrait" },
-    { name: "John Doe", email: "john.doe@example.com", role: "Editor", joined: "2023-02-20", avatar: "https://placehold.co/40x40.png", fallback: "JD", aiHint: "male portrait" },
-    { name: "Maria Garcia", email: "maria.garcia@example.com", role: "Writer", joined: "2023-03-10", avatar: "https://placehold.co/40x40.png", fallback: "MG", aiHint: "female portrait" },
-    { name: "David Smith", email: "david.smith@example.com", role: "Writer", joined: "2023-04-05", avatar: "https://placehold.co/40x40.png", fallback: "DS", aiHint: "male portrait" },
-    { name: "Emily Johnson", email: "emily.j@example.com", role: "Staff", joined: "2023-05-21", avatar: "https://placehold.co/40x40.png", fallback: "EJ", aiHint: "female portrait" },
-]
+interface User {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    joined: string;
+    avatar: string;
+    fallback: string;
+}
 
 export default function UsersPage() {
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            setLoading(true);
+            const usersCollection = collection(db, "users");
+            const q = query(usersCollection);
+            const querySnapshot = await getDocs(q);
+            const usersData = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    name: data.displayName || 'N/A',
+                    email: data.email,
+                    role: data.role,
+                    joined: new Date().toLocaleDateString(), 
+                    avatar: data.photoURL || `https://placehold.co/40x40.png`,
+                    fallback: (data.displayName || data.email).charAt(0).toUpperCase(),
+                }
+            }) as User[];
+            setUsers(usersData);
+            setLoading(false);
+        };
+        fetchUsers();
+    }, []);
+
     const getRoleBadge = (role: string) => {
         switch (role) {
-            case "Superadmin": return "default";
-            case "Editor": return "secondary";
-            case "Writer": return "outline";
+            case "superadmin": return "default";
+            case "admin": return "default";
+            case "editor": return "secondary";
+            case "writer": return "outline";
             default: return "secondary";
         }
     }
@@ -77,21 +113,21 @@ export default function UsersPage() {
                     <DialogHeader>
                     <DialogTitle>Add New User</DialogTitle>
                     <DialogDescription>
-                        Fill in the details below to add a new user to your team.
+                        This functionality is not implemented. Please invite users through your authentication provider.
                     </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name" className="text-right">Name</Label>
-                            <Input id="name" placeholder="Ada Lovelace" className="col-span-3" />
+                            <Input id="name" placeholder="Ada Lovelace" className="col-span-3" disabled />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="email" className="text-right">Email</Label>
-                            <Input id="email" type="email" placeholder="ada@example.com" className="col-span-3" />
+                            <Input id="email" type="email" placeholder="ada@example.com" className="col-span-3" disabled />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="role" className="text-right">Role</Label>
-                            <Select>
+                            <Select disabled>
                                 <SelectTrigger className="col-span-3">
                                     <SelectValue placeholder="Select a role" />
                                 </SelectTrigger>
@@ -105,7 +141,7 @@ export default function UsersPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                    <Button type="submit">Invite User</Button>
+                    <Button type="submit" disabled>Invite User</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -124,42 +160,60 @@ export default function UsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.email}>
-                <TableCell>
-                    <div className="flex items-center gap-3">
-                        <Avatar>
-                            <AvatarImage src={user.avatar} data-ai-hint={user.aiHint} />
-                            <AvatarFallback>{user.fallback}</AvatarFallback>
-                        </Avatar>
-                        <div className="grid gap-0.5">
-                            <div className="font-medium">{user.name}</div>
-                            <div className="text-sm text-muted-foreground">{user.email}</div>
+            {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell>
+                            <div className="flex items-center gap-3">
+                                <Skeleton className="h-10 w-10 rounded-full" />
+                                <div className="grid gap-1">
+                                    <Skeleton className="h-4 w-24" />
+                                    <Skeleton className="h-3 w-32" />
+                                </div>
+                            </div>
+                        </TableCell>
+                        <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell><MoreHorizontal className="h-4 w-4 text-muted-foreground" /></TableCell>
+                    </TableRow>
+                ))
+            ) : (
+                users.map((user) => (
+                <TableRow key={user.id}>
+                    <TableCell>
+                        <div className="flex items-center gap-3">
+                            <Avatar>
+                                <AvatarImage src={user.avatar} />
+                                <AvatarFallback>{user.fallback}</AvatarFallback>
+                            </Avatar>
+                            <div className="grid gap-0.5">
+                                <div className="font-medium">{user.name}</div>
+                                <div className="text-sm text-muted-foreground">{user.email}</div>
+                            </div>
                         </div>
-                    </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={getRoleBadge(user.role)}>{user.role}</Badge>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">{user.joined}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem>View Details</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+                    </TableCell>
+                    <TableCell>
+                    <Badge variant={getRoleBadge(user.role)}>{user.role}</Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{user.joined}</TableCell>
+                    <TableCell>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                        </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem>Edit Role (Not Implemented)</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive">Delete (Not Implemented)</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    </TableCell>
+                </TableRow>
+                ))
+            )}
           </TableBody>
         </Table>
       </CardContent>

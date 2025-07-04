@@ -4,17 +4,19 @@ import Link from "next/link";
 import {
   Bell,
   FileText,
-  Home,
   LayoutGrid,
   LayoutPanelLeft,
   MessageSquare,
-  Package2,
   PenSquare,
   Search,
   Settings,
   Users,
+  LoaderCircle,
 } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect } from "react";
 
+import { useAuth } from "@/context/auth-context";
 import {
   SidebarProvider,
   Sidebar,
@@ -39,7 +41,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Logo from "@/components/logo";
-import { usePathname } from "next/navigation";
 
 export default function AdminLayout({
   children,
@@ -47,7 +48,29 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
 
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/");
+    } else if (!loading && user) {
+      const allowedRoles = ['admin', 'superadmin', 'editor', 'writer'];
+      if (!allowedRoles.includes(user.role as string)) {
+          router.push("/article"); // Redirect non-admin users to a public page
+      }
+    }
+  }, [user, loading, router]);
+
+
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center">
+        <LoaderCircle className="animate-spin" />
+      </div>
+    )
+  }
+  
   const isActive = (path: string) => {
     return pathname === path;
   };
@@ -66,88 +89,88 @@ export default function AdminLayout({
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive("/dashboard")}
-                tooltip="Dashboard"
-              >
-                <Link href="/dashboard">
-                  <LayoutGrid />
-                  <span>Dashboard</span>
-                </Link>
-              </SidebarMenuButton>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/dashboard")}
+                  tooltip="Dashboard"
+                >
+                  <Link href="/dashboard">
+                    <LayoutGrid />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive("/content")}
-                tooltip="Content"
-              >
-                <Link href="/content">
-                  <FileText />
-                  <span>Content</span>
-                </Link>
-              </SidebarMenuButton>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/content")}
+                  tooltip="Content"
+                >
+                  <Link href="/content">
+                    <FileText />
+                    <span>Content</span>
+                  </Link>
+                </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive("/layouts")}
-                tooltip="Layouts"
-              >
-                <Link href="/layouts">
-                  <LayoutPanelLeft />
-                  <span>Layouts</span>
-                </Link>
-              </SidebarMenuButton>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/layouts")}
+                  tooltip="Layouts"
+                >
+                  <Link href="/layouts">
+                    <LayoutPanelLeft />
+                    <span>Layouts</span>
+                  </Link>
+                </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive("/comments")}
-                tooltip="Comments"
-              >
-                <Link href="/comments">
-                  <MessageSquare />
-                  <span>Comments</span>
-                </Link>
-              </SidebarMenuButton>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/comments")}
+                  tooltip="Comments"
+                >
+                  <Link href="/comments">
+                    <MessageSquare />
+                    <span>Comments</span>
+                  </Link>
+                </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/users")} tooltip="Users">
-                <Link href="/users">
-                  <Users />
-                  <span>Users</span>
-                </Link>
-              </SidebarMenuButton>
+                <SidebarMenuButton asChild isActive={isActive("/users")} tooltip="Users">
+                  <Link href="/users">
+                    <Users />
+                    <span>Users</span>
+                  </Link>
+                </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive("/editor")}
-                tooltip="Editor"
-              >
-                <Link href="/editor">
-                  <PenSquare />
-                  <span>Editor</span>
-                </Link>
-              </SidebarMenuButton>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/editor")}
+                  tooltip="Editor"
+                >
+                  <Link href="/editor">
+                    <PenSquare />
+                    <span>Editor</span>
+                  </Link>
+                </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive("/settings")}
-                tooltip="Settings"
-              >
-                <Link href="/settings">
-                  <Settings />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/settings")}
+                  tooltip="Settings"
+                >
+                  <Link href="/settings">
+                    <Settings />
+                    <span>Settings</span>
+                  </Link>
+                </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
@@ -175,20 +198,20 @@ export default function AdminLayout({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="https://placehold.co/40x40.png" alt="@shadcn" data-ai-hint="male portrait" />
-                  <AvatarFallback>SA</AvatarFallback>
+                  <AvatarImage src={user?.photoURL ?? "https://placehold.co/40x40.png"} alt={user?.displayName ?? ""} data-ai-hint="male portrait" />
+                  <AvatarFallback>{user?.displayName?.charAt(0) ?? user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <span className="sr-only">Toggle user menu</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Super Admin</DropdownMenuLabel>
+              <DropdownMenuLabel>{user?.displayName ?? user?.email}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Profile</DropdownMenuItem>
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/">Logout</Link>
+              <DropdownMenuItem onClick={logout}>
+                Logout
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
