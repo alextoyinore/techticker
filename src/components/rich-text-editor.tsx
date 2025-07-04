@@ -1,7 +1,8 @@
 "use client"
 
-import { Plate, useEditorRef, toggleElement } from "@udecode/plate-common";
+import { getBlockAbove, Plate, useEditorRef } from "@udecode/plate-common";
 import { Editable } from "slate-react";
+import { setNodes } from 'slate';
 import {
   MARK_BOLD,
   MARK_CODE,
@@ -12,7 +13,8 @@ import {
 import { MARK_HIGHLIGHT } from "@udecode/plate-highlight";
 import { ELEMENT_BLOCKQUOTE } from "@udecode/plate-block-quote";
 import { ELEMENT_H1, ELEMENT_H2, ELEMENT_H3 } from "@udecode/plate-heading";
-import { ELEMENT_OL, ELEMENT_UL } from "@udecode/plate-list";
+import { ELEMENT_OL, ELEMENT_UL, toggleList } from "@udecode/plate-list";
+import { ELEMENT_PARAGRAPH } from "@udecode/plate-paragraph";
 import { insertTable } from "@udecode/plate-table";
 import {
     Quote,
@@ -42,14 +44,22 @@ import {
 } from './ui/dropdown-menu';
 
 
-const toggleBlock = (editor: any, format: string) => {
-    toggleElement(editor, {
-      key: format,
-    });
-};
-
 export default function RichTextEditor() {
     const editor = useEditorRef();
+
+    const toggleBlock = (format: string) => {
+        if (!editor) return;
+
+        const block = getBlockAbove(editor, {
+            match: { type: [format, ELEMENT_PARAGRAPH] },
+        });
+        const isActive = block && block[0].type === format;
+
+        setNodes(editor, {
+            type: isActive ? ELEMENT_PARAGRAPH : format,
+        });
+    };
+
     return (
     <Plate plugins={plugins}>
       <div className="relative">
@@ -76,15 +86,15 @@ export default function RichTextEditor() {
             </ToolbarGroup>
             <Separator orientation="vertical" className="h-6 mx-1" />
              <ToolbarGroup>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_H1)}><Heading1 className="h-4 w-4" /></Button>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_H2)}><Heading2 className="h-4 w-4" /></Button>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_H3)}><Heading3 className="h-4 w-4" /></Button>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_BLOCKQUOTE)}><Quote className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(ELEMENT_H1)}><Heading1 className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(ELEMENT_H2)}><Heading2 className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(ELEMENT_H3)}><Heading3 className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(ELEMENT_BLOCKQUOTE)}><Quote className="h-4 w-4" /></Button>
             </ToolbarGroup>
             <Separator orientation="vertical" className="h-6 mx-1" />
             <ToolbarGroup>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_UL)}><List className="h-4 w-4" /></Button>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_OL)}><ListOrdered className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleList(editor, { type: ELEMENT_UL})}><List className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleList(editor, { type: ELEMENT_OL})}><ListOrdered className="h-4 w-4" /></Button>
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="icon" className="h-8 w-8">
