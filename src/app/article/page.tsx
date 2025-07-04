@@ -11,7 +11,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import Logo from '@/components/logo';
 import { LoaderCircle } from 'lucide-react';
 
 const mockArticle = {
@@ -80,8 +79,7 @@ export default function ArticlePage() {
   return (
     <>
         <header className="flex h-16 items-center justify-between border-b bg-background px-6 sticky top-0 z-50">
-            <Link href="/article" className="flex items-center gap-2">
-                <Logo />
+            <Link href="/article" className="flex items-center">
                 <span className="font-bold font-headline">TechTicker</span>
             </Link>
             <div className="flex items-center gap-2">

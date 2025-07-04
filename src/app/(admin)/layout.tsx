@@ -40,7 +40,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import Logo from "@/components/logo";
 
 export default function AdminLayout({
   children,
@@ -79,8 +78,7 @@ export default function AdminLayout({
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <div className="flex items-center gap-2 p-2">
-            <Logo />
+          <div className="flex items-center p-2">
             <h1 className="text-xl font-bold font-headline text-sidebar-foreground">
               TechTicker
             </h1>
