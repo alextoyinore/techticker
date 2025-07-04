@@ -97,7 +97,7 @@ export default function ArticlePage() {
                       <Button variant="ghost" size="icon" className="rounded-full">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={user?.photoURL ?? ''} alt={user?.displayName ?? ''} />
-                          <AvatarFallback>{user?.displayName?.charAt(0) ?? user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback>{user?.displayName?.charAt(0)?.toUpperCase() ?? user?.email?.charAt(0)?.toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <span className="sr-only">Toggle user menu</span>
                       </Button>
@@ -158,7 +158,7 @@ export default function ArticlePage() {
                                 <div className="flex items-start gap-4">
                                     <Avatar className="h-10 w-10">
                                         <AvatarImage src={user.photoURL ?? ''} />
-                                        <AvatarFallback>{user.displayName?.charAt(0) ?? user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                                        <AvatarFallback>{user.displayName?.charAt(0)?.toUpperCase() ?? user.email?.charAt(0)?.toUpperCase()}</AvatarFallback>
                                     </Avatar>
                                     <Textarea
                                         placeholder="Write a comment..."
