@@ -15,7 +15,10 @@ function Logo(props: React.SVGProps<SVGSVGElement>) {
       {...props}
     >
       <path d="M3 3h18v18H3z" fill="hsl(var(--primary))" stroke="none" />
-      <path d="M9 8h6M12 8v8" stroke="hsl(var(--primary-foreground))" />
+      <path d="M6 19v-3" stroke="hsl(var(--primary-foreground))" />
+      <path d="M10 19v-7" stroke="hsl(var(--primary-foreground))" />
+      <path d="M14 19v-11" stroke="hsl(var(--primary-foreground))" />
+      <path d="M18 19v-15" stroke="hsl(var(--primary-foreground))" />
     </svg>
   )
 }
