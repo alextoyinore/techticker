@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import Logo from '@/components/logo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { LoaderCircle } from 'lucide-react';
+import { LoaderCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function AuthPage() {
   const { signInWithGoogle, signUpWithEmail, signInWithEmail, user, loading: authLoading } = useAuth();
@@ -24,6 +24,10 @@ export default function AuthPage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -116,7 +120,24 @@ export default function AuthPage() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="login-password">Password</Label>
-                    <Input id="login-password" type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+                    <div className="relative">
+                        <Input 
+                            id="login-password" 
+                            type={showLoginPassword ? 'text' : 'password'} 
+                            required 
+                            value={loginPassword} 
+                            onChange={(e) => setLoginPassword(e.target.value)}
+                            className="pr-10"
+                        />
+                        <button 
+                            type="button" 
+                            className="absolute inset-y-0 right-0 flex items-center justify-center h-full w-10 text-muted-foreground" 
+                            onClick={() => setShowLoginPassword(prev => !prev)}
+                            aria-label={showLoginPassword ? "Hide password" : "Show password"}
+                        >
+                            {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                    </div>
                   </div>
                   {authError && <p className="text-sm text-destructive">{authError}</p>}
                   <Button type="submit" className="w-full" disabled={loading}>
@@ -153,11 +174,45 @@ export default function AuthPage() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="signup-password">Password</Label>
-                    <Input id="signup-password" type="password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} />
+                     <div className="relative">
+                        <Input 
+                            id="signup-password" 
+                            type={showSignupPassword ? 'text' : 'password'} 
+                            required 
+                            value={signupPassword} 
+                            onChange={(e) => setSignupPassword(e.target.value)}
+                            className="pr-10"
+                        />
+                        <button 
+                            type="button" 
+                            className="absolute inset-y-0 right-0 flex items-center justify-center h-full w-10 text-muted-foreground" 
+                            onClick={() => setShowSignupPassword(prev => !prev)}
+                            aria-label={showSignupPassword ? "Hide password" : "Show password"}
+                        >
+                            {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                    </div>
                   </div>
                    <div className="grid gap-2">
                     <Label htmlFor="signup-confirm-password">Confirm Password</Label>
-                    <Input id="signup-confirm-password" type="password" required value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} />
+                    <div className="relative">
+                        <Input 
+                            id="signup-confirm-password" 
+                            type={showConfirmPassword ? 'text' : 'password'} 
+                            required 
+                            value={signupConfirmPassword} 
+                            onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                            className="pr-10"
+                        />
+                        <button 
+                            type="button" 
+                            className="absolute inset-y-0 right-0 flex items-center justify-center h-full w-10 text-muted-foreground" 
+                            onClick={() => setShowConfirmPassword(prev => !prev)}
+                            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                        >
+                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                    </div>
                   </div>
                   {authError && <p className="text-sm text-destructive">{authError}</p>}
                   <Button type="submit" className="w-full" disabled={loading}>
