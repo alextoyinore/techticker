@@ -57,7 +57,7 @@ export default function AdminLayout({
     } else {
       const allowedRoles = ['admin', 'superadmin', 'editor', 'writer'];
       if (!user.role || !allowedRoles.includes(user.role)) {
-          router.push("/article"); // Redirect non-admin users to a public page
+          router.push("/"); // Redirect non-admin users to a public page
       }
     }
   }, [user, loading, router]);
