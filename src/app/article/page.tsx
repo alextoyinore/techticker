@@ -82,8 +82,6 @@ export default function ArticlePage() {
     }
   };
 
-  const isAdmin = user && ['admin', 'superadmin', 'editor', 'writer'].includes(user.role as string);
-
   return (
     <>
         <header className="flex h-16 items-center justify-between border-b bg-background px-6 sticky top-0 z-50">
@@ -110,11 +108,9 @@ export default function ArticlePage() {
                       <DropdownMenuItem asChild>
                         <Link href="/profile">Profile</Link>
                       </DropdownMenuItem>
-                      {isAdmin && (
-                        <DropdownMenuItem asChild>
-                          <Link href="/dashboard">Dashboard</Link>
-                        </DropdownMenuItem>
-                      )}
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard">Dashboard</Link>
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
                     </DropdownMenuContent>
