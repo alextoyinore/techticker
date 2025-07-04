@@ -1,6 +1,3 @@
-// All UI components for the Plate editor.
-// This is a collection of components from the plate-ui documentation
-// adapted for this project's shadcn/ui.
 'use client';
 
 import { cn } from '@/lib/utils';
@@ -17,17 +14,9 @@ import {
   UseVirtualFloatingOptions,
 } from '@udecode/plate-floating';
 import {
-  CodeBlockCombobox,
   ELEMENT_CODE_BLOCK,
   isSelectionExpanded,
-  useCodeBlockElementState,
 } from '@udecode/plate-code-block';
-import {
-  comboboxActions,
-  ComboboxContent,
-  ComboboxItem,
-  useComboboxControls,
-} from '@udecode/plate-combobox';
 import {
   isCollapsed,
   PlateElement,
@@ -74,29 +63,22 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useForm } from 'react-hook-form';
 import {
-  Blockquote,
   Bold,
   Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
   Code,
-  Code2,
   Heading1,
   Heading2,
   Heading3,
-  Highlighter,
   Italic,
   Link,
   List,
   ListOrdered,
   MoreVertical,
-  Redo,
-  Strikethrough,
   Table,
-  Trash,
   Underline,
-  Undo,
 } from 'lucide-react';
 
 import { Button } from './ui/button';
@@ -223,12 +205,6 @@ export const CodeBlockElement = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof PlateElement>
 >((props, ref) => {
   const { children, className, ...rest } = props;
-  const state = useCodeBlockElementState();
-  const { lang, syntax, syntaxText, setSyntax } = state;
-  const editor = useEditorState();
-  const controls = useComboboxControls();
-  const activeValue = lang || 'text';
-
   return (
     <PlateElement
       ref={ref}
@@ -238,19 +214,11 @@ export const CodeBlockElement = React.forwardRef<
       <pre className="overflow-x-auto rounded-md bg-muted p-4 font-mono text-sm">
         <code>{children}</code>
       </pre>
-      {syntax && (
-        <div className="absolute right-2 top-2 z-10">
-          <CodeBlockCombobox
-            items={state.syntaxList}
-            value={state.lang}
-            onValueChange={state.setSyntax}
-          />
-        </div>
-      )}
     </PlateElement>
   );
 });
 CodeBlockElement.displayName = 'CodeBlockElement';
+
 
 export const LinkElement = React.forwardRef<
   React.ElementRef<typeof PlateElement>,

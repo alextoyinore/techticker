@@ -14,7 +14,7 @@ import { ELEMENT_H1, ELEMENT_H2, ELEMENT_H3 } from "@udecode/plate-heading";
 import { ELEMENT_OL, ELEMENT_UL } from "@udecode/plate-list";
 import { insertTable } from "@udecode/plate-table";
 import {
-    Blockquote,
+    Quote,
     Bold,
     Code,
     Heading1,
@@ -78,7 +78,7 @@ export default function RichTextEditor() {
                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_H1)}><Heading1 className="h-4 w-4" /></Button>
                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_H2)}><Heading2 className="h-4 w-4" /></Button>
                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_H3)}><Heading3 className="h-4 w-4" /></Button>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_BLOCKQUOTE)}><Blockquote className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(editor, ELEMENT_BLOCKQUOTE)}><Quote className="h-4 w-4" /></Button>
             </ToolbarGroup>
             <Separator orientation="vertical" className="h-6 mx-1" />
             <ToolbarGroup>
