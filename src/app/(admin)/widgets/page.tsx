@@ -90,7 +90,7 @@ export default function WidgetsPage() {
     const [widgetHtml, setWidgetHtml] = useState("");
     const [widgetConfigType, setWidgetConfigType] = useState<'category' | 'tag'>('category');
     const [widgetConfigValue, setWidgetConfigValue] = useState("");
-    const [widgetConfigLimit, setWidgetConfigLimit] = useState(5);
+    const [widgetConfigLimit, setWidgetConfigLimit] = useState<number | string>(5);
 
     // Categories for select dropdown
     const [categories, setCategories] = useState<Category[]>([]);
@@ -201,7 +201,7 @@ export default function WidgetsPage() {
                 config: {
                     type: widgetConfigType,
                     value: widgetConfigValue,
-                    limit: widgetConfigLimit,
+                    limit: Number(widgetConfigLimit) || 5,
                 }
             };
             try {
@@ -308,7 +308,7 @@ export default function WidgetsPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="config-limit">Item Limit</Label>
-                                        <Input id="config-limit" type="number" value={widgetConfigLimit} onChange={(e) => setWidgetConfigLimit(parseInt(e.target.value, 10))} min={1} max={20} required/>
+                                        <Input id="config-limit" type="number" value={widgetConfigLimit} onChange={(e) => setWidgetConfigLimit(e.target.value)} min={1} max={20} required/>
                                     </div>
                                 </div>
                             </div>
