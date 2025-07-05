@@ -35,8 +35,10 @@ import {
   Image as ImageIcon,
   Table,
   Code,
+  BookCopy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 interface RichTextEditorProps {
   value: string;
@@ -90,6 +92,10 @@ const MarkdownToolbar = ({ onCommand }: { onCommand: (command: string) => void }
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onCommand('image')}>
         <ImageIcon className="h-4 w-4" />
         <span className="sr-only">Insert Image</span>
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onCommand('relatedArticle')}>
+        <BookCopy className="h-4 w-4" />
+        <span className="sr-only">Insert Related Article</span>
       </Button>
       <Separator orientation="vertical" className="mx-1 h-6" />
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onCommand('ul')}>
@@ -196,6 +202,7 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
       case 'link':
       case 'image':
       case 'table':
+      case 'relatedArticle':
         setDialog(command);
         break;
       default:
@@ -452,6 +459,55 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
     );
   };
 
+  const RelatedArticleDialog = () => {
+    const [selectedArticleId, setSelectedArticleId] = useState('');
+
+    // TODO: Replace with actual article fetching from Firestore
+    const mockArticles = [
+        { id: 'future-of-ai', title: 'The Future of AI in Tech Journalism' },
+        { id: 'quantum-laptop', title: 'Unboxing the New Quantum Laptop' },
+        { id: 'sustainable-tech', title: 'A Deep Dive into Sustainable Tech' },
+        { id: 'vscode-extensions', title: 'Top 10 VSCode Extensions for 2024' },
+        { id: 'edge-computing', title: 'How Edge Computing is Changing the IoT' },
+    ];
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      const article = mockArticles.find(a => a.id === selectedArticleId);
+      if (article) {
+        insertText(`[${article.title}](/article/${article.id})`);
+      }
+      setDialog(null);
+      setSelectedArticleId('');
+    };
+
+    return (
+      <Dialog open={dialog === 'relatedArticle'} onOpenChange={() => setDialog(null)}>
+        <DialogContent>
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>Insert Related Article</DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <Label>Select an article to link to</Label>
+              <RadioGroup value={selectedArticleId} onValueChange={setSelectedArticleId} className="space-y-2">
+                {mockArticles.map((article) => (
+                  <div key={article.id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={article.id} id={`article-${article.id}`} />
+                    <Label htmlFor={`article-${article.id}`} className="font-normal">{article.title}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={!selectedArticleId}>Insert Link</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <>
       <Tabs defaultValue="write" className={cn("w-full", className)}>
@@ -486,6 +542,7 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
       <QuoteDialog />
       <TableDialog />
       <CodeDialog />
+      <RelatedArticleDialog />
     </>
   );
 }
