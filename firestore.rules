@@ -3,73 +3,58 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check user role
-    function isOneOfRoles(roles) {
-      // Ensure the user is authenticated before checking roles
-      if (request.auth == null) {
-        return false;
-      }
-      // Access the user's role from their document in the /users collection
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in roles;
+
+    // Helper function to check if a user has specific roles.
+    function hasRole(allowedRoles) {
+      // Ensure the user is authenticated before checking role.
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in allowedRoles;
     }
 
-    // ARTICLES
-    match /articles/{articleId} {
-      // Anyone can read a published article
-      allow get: if resource.data.status == 'Published';
-      // Anyone can list published articles
-      allow list: if resource.data.status == 'Published';
-
-      // Only specific roles can create, update, or delete articles
-      allow create, update, delete: if isOneOfRoles(['admin', 'superadmin', 'editor', 'writer']);
+    // Default rule: deny all reads and writes unless explicitly allowed below.
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    // USERS
+    // USERS Collection
+    // Users can manage their own document, admins can list all users.
     match /users/{userId} {
-      // Admins/Superadmins can list all user documents
-      allow list: if isOneOfRoles(['admin', 'superadmin']);
-
-      // A user can read/update their own data.
-      // Admins/Superadmins can also read/update any user's data.
-      allow get, update: if request.auth != null && (request.auth.uid == userId || isOneOfRoles(['admin', 'superadmin']));
-      
-      // Only Admins/Superadmins can delete a user document.
-      allow delete: if isOneOfRoles(['admin', 'superadmin']);
-
-      // Any authenticated user can create their own user document upon signup.
-      allow create: if request.auth != null;
+      allow create: if request.auth.uid == userId;
+      allow get, update: if request.auth.uid == userId;
+      allow list: if hasRole(['admin', 'superadmin']);
     }
-    
-    // COMMENTS
+
+    // ARTICLES Collection
+    // Public can read published articles. Writers and higher roles can manage content.
+    match /articles/{articleId} {
+      allow get: if resource.data.status == 'Published' || hasRole(['writer', 'editor', 'admin', 'superadmin']);
+      allow list: if hasRole(['writer', 'editor', 'admin', 'superadmin']);
+      allow create, update: if hasRole(['writer', 'editor', 'admin', 'superadmin']);
+      allow delete: if hasRole(['admin', 'superadmin']);
+    }
+
+    // COMMENTS Collection
+    // Public can submit comments and read approved ones. Editors and higher can moderate.
     match /comments/{commentId} {
-      // Anyone can read and list approved comments
-      allow get, list: if resource.data.status == 'Approved';
-      
-      // Admins can get and update any comment for moderation purposes
-      allow get, list, update, delete: if isOneOfRoles(['admin', 'superadmin']);
-
-      // Authenticated users can create comments (which will be 'Pending' by default)
+      // `list` is open, but `get` is secure. This allows public queries for approved comments.
+      // Firestore checks the `get` rule for each document returned by a list query.
+      allow list: if true;
+      allow get: if resource.data.status == 'Approved' || hasRole(['editor', 'admin', 'superadmin']);
       allow create: if request.auth != null;
+      allow update, delete: if hasRole(['editor', 'admin', 'superadmin']);
+    }
+
+    // CATEGORIES Collection
+    // Public can read, editors and higher can write.
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if hasRole(['editor', 'admin', 'superadmin']);
     }
     
-    // CATEGORIES
-    match /categories/{categoryId} {
-      // Any authenticated user can read categories (for the editor dropdown)
-      allow get, list: if request.auth != null;
-      
-      // Only admins can manage categories
-      allow create, update, delete: if isOneOfRoles(['admin', 'superadmin']);
-    }
-
-    // WIDGETS
+    // WIDGETS Collection
+    // Public can read, editors and higher can write.
     match /widgets/{widgetId} {
-      // Any authenticated user can read widgets (for the layout builder)
-      allow get, list: if request.auth != null;
-      
-      // Only admins can manage widgets
-      allow create, update, delete: if isOneOfRoles(['admin', 'superadmin']);
+      allow read: if true;
+      allow write: if hasRole(['editor', 'admin', 'superadmin']);
     }
-
   }
 }
