@@ -332,16 +332,40 @@ export default function RichTextEditor({ value, onChange }: RichTextEditorProps)
 
   const TableDialog = () => {
     const [tableData, setTableData] = useState('');
-    
+
     const parseToMarkdown = (text: string) => {
       const rows = text.trim().split('\n').map(row => row.split('\t'));
-      if (rows.length === 0 || rows[0].length === 0) return '';
-  
+      if (rows.length === 0 || (rows.length === 1 && rows[0].length === 1 && rows[0][0] === '')) return '';
+
       const header = `| ${rows[0].join(' | ')} |`;
       const separator = `| ${rows[0].map(() => '---').join(' | ')} |`;
       const body = rows.slice(1).map(row => `| ${row.join(' | ')} |`).join('\n');
-  
+
       return `${header}\n${separator}\n${body}`;
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const pastedHtml = e.clipboardData.getData('text/html');
+        if (pastedHtml && pastedHtml.includes('<table')) {
+            e.preventDefault();
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = pastedHtml;
+            const table = tempDiv.querySelector('table');
+            if (table) {
+                const rows = Array.from(table.querySelectorAll('tr'));
+                const tsv = rows.map(row => 
+                    Array.from(row.querySelectorAll('td, th'))
+                        .map(cell => cell.innerText.trim().replace(/\n/g, ' '))
+                        .join('\t')
+                ).join('\n');
+                
+                const textarea = e.currentTarget;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const newText = tableData.substring(0, start) + tsv + tableData.substring(end);
+                setTableData(newText);
+            }
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -353,6 +377,7 @@ export default function RichTextEditor({ value, onChange }: RichTextEditorProps)
       setDialog(null);
       setTableData('');
     };
+
     return (
       <Dialog open={dialog === 'table'} onOpenChange={() => setDialog(null)}>
         <DialogContent className="max-w-2xl">
@@ -362,8 +387,18 @@ export default function RichTextEditor({ value, onChange }: RichTextEditorProps)
             </DialogHeader>
             <div className="py-4 space-y-2">
               <Label htmlFor="table-data">Paste Table Data</Label>
-              <Textarea id="table-data" value={tableData} onChange={(e) => setTableData(e.target.value)} placeholder="Paste data from Excel, Google Sheets, etc. (use tabs to separate columns)" rows={10} required />
-              <p className="text-sm text-muted-foreground">Tip: Copy cells from your spreadsheet and paste them here.</p>
+              <Textarea
+                id="table-data"
+                value={tableData}
+                onChange={(e) => setTableData(e.target.value)}
+                onPaste={handlePaste}
+                placeholder="Paste data from Excel, a website, or a document."
+                rows={10}
+                required
+              />
+              <p className="text-sm text-muted-foreground">
+                Tip: Copy a table from a website, spreadsheet or document and paste it here.
+              </p>
             </div>
             <DialogFooter>
               <Button type="submit">Insert Table</Button>
