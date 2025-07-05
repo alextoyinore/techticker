@@ -215,7 +215,9 @@ export default function LayoutsPage() {
                     <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
                     <div className="flex-1">
                     <h3 className="font-semibold">{widget.name}</h3>
-                    <p className="text-sm text-muted-foreground capitalize">{widget.config.type}: {widget.config.value}</p>
+                    {widget.config && (
+                        <p className="text-sm text-muted-foreground capitalize">{widget.config.type}: {widget.config.value}</p>
+                    )}
                     </div>
                      <Button size="sm" variant="outline" onClick={() => handleAddWidget(widget)}>
                         <PlusCircle className="h-4 w-4 mr-2" />
