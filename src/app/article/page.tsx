@@ -13,7 +13,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +25,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Globe, LayoutGrid, LoaderCircle, LogOut, CircleUser } from 'lucide-react';
+import { CircleUser, Globe, LayoutGrid, LoaderCircle, LogOut, Moon, Monitor, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 const mockArticle = {
   title: 'The Future is Now: A Deep Dive into Quantum Computing',
@@ -57,6 +62,7 @@ const mockComments = [
 
 export default function ArticlePage() {
   const { user, loading, logout } = useAuth();
+  const { setTheme } = useTheme();
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -134,6 +140,29 @@ export default function ArticlePage() {
                           <span>View Site</span>
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <Sun />
+                          <span>Toggle Theme</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => setTheme('light')}>
+                              <Sun />
+                              <span>Light</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme('dark')}>
+                              <Moon />
+                              <span>Dark</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme('system')}>
+                              <Monitor />
+                              <span>System</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={logout}>
                         <LogOut className="h-4 w-4" />
