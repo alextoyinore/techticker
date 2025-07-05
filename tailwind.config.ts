@@ -11,8 +11,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Roboto', 'sans-serif'],
-        headline: ['Merriweather', 'serif'],
+        body: ['Montserrat', 'sans-serif'],
+        headline: ['Lora', 'serif'],
         code: ['monospace'],
       },
       colors: {
@@ -71,6 +71,9 @@ export default {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      boxShadow: {
+        none: 'none',
       },
       keyframes: {
         'accordion-down': {
