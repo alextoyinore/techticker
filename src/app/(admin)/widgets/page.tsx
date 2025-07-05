@@ -158,7 +158,7 @@ export default function WidgetsPage() {
         if (widget.config) {
             setWidgetConfigType(widget.config.type);
             setWidgetConfigValue(widget.config.value);
-            setWidgetConfigLimit(widget.config.limit);
+            setWidgetConfigLimit(widget.config.limit || '');
         } else {
             // Provide default values if config is missing
             setWidgetConfigType('category');
@@ -188,8 +188,8 @@ export default function WidgetsPage() {
     
     const handleSaveWidget = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!widgetName.trim() || !widgetHtml.trim() || !widgetConfigValue.trim()) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please fill out all required fields.' });
+        if (!widgetName.trim() || !widgetHtml.trim()) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Widget Name and HTML are required.' });
             return;
         }
 
@@ -294,21 +294,22 @@ export default function WidgetsPage() {
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="config-value">{widgetConfigType === 'category' ? 'Select Category' : 'Enter Tag'}</Label>
+                                        <Label htmlFor="config-value">{widgetConfigType === 'category' ? 'Select Category (Optional)' : 'Enter Tag (Optional)'}</Label>
                                         {widgetConfigType === 'category' ? (
-                                            <Select value={widgetConfigValue} onValueChange={setWidgetConfigValue} required>
-                                                <SelectTrigger id="config-value"><SelectValue placeholder={loadingCategories ? 'Loading...' : 'Select a category'} /></SelectTrigger>
+                                            <Select value={widgetConfigValue} onValueChange={setWidgetConfigValue}>
+                                                <SelectTrigger id="config-value"><SelectValue placeholder={loadingCategories ? 'Loading...' : 'Latest Articles'} /></SelectTrigger>
                                                 <SelectContent>
+                                                    <SelectItem value="">Latest Articles</SelectItem>
                                                     {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         ) : (
-                                            <Input id="config-value" value={widgetConfigValue} onChange={(e) => setWidgetConfigValue(e.target.value)} placeholder="e.g., 'AI'" required/>
+                                            <Input id="config-value" value={widgetConfigValue} onChange={(e) => setWidgetConfigValue(e.target.value)} placeholder="e.g., 'AI' (or leave blank)"/>
                                         )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="config-limit">Item Limit</Label>
-                                        <Input id="config-limit" type="number" value={widgetConfigLimit} onChange={(e) => setWidgetConfigLimit(e.target.value)} min={1} max={20} required/>
+                                        <Input id="config-limit" type="number" value={widgetConfigLimit} onChange={(e) => setWidgetConfigLimit(e.target.value || '')} min={1} max={20} required/>
                                     </div>
                                 </div>
                             </div>
@@ -355,7 +356,7 @@ export default function WidgetsPage() {
                 <TableRow key={widget.id}>
                     <TableCell className="font-medium">{widget.name}</TableCell>
                     <TableCell className="text-muted-foreground capitalize">
-                        {widget.config ? `${widget.config.type}: ${widget.config.value}` : 'N/A'}
+                        {widget.config ? (widget.config.value ? `${widget.config.type}: ${widget.config.value}` : 'Latest Articles') : 'N/A'}
                     </TableCell>
                     <TableCell>
                       <AlertDialog>

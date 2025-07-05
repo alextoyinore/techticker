@@ -40,30 +40,37 @@ function WidgetRenderer({ widget }: { widget: Widget }) {
 
     useEffect(() => {
         const fetchArticles = async () => {
-            if (!widget.config) {
-                setLoading(false);
-                return;
-            }
             setLoading(true);
             try {
                 const articlesCollection = collection(db, "articles");
                 let articlesQuery;
+                const articleLimit = widget.config?.limit || 5;
 
-                if (widget.config.type === 'category') {
+                // If there's a config and a specific value, filter by it
+                if (widget.config && widget.config.value) {
+                    if (widget.config.type === 'category') {
+                        articlesQuery = query(
+                            articlesCollection, 
+                            where("categoryId", "==", widget.config.value),
+                            where("status", "==", "Published"),
+                            orderBy("updatedAt", "desc"),
+                            limit(articleLimit)
+                        );
+                    } else { // 'tag'
+                        articlesQuery = query(
+                            articlesCollection, 
+                            where("tags", "array-contains", widget.config.value),
+                            where("status", "==", "Published"),
+                            orderBy("updatedAt", "desc"),
+                            limit(articleLimit)
+                        );
+                    }
+                } else { // Otherwise, fetch the latest articles
                     articlesQuery = query(
-                        articlesCollection, 
-                        where("categoryId", "==", widget.config.value),
+                        articlesCollection,
                         where("status", "==", "Published"),
                         orderBy("updatedAt", "desc"),
-                        limit(widget.config.limit || 5)
-                    );
-                } else { // 'tag'
-                    articlesQuery = query(
-                        articlesCollection, 
-                        where("tags", "array-contains", widget.config.value),
-                        where("status", "==", "Published"),
-                        orderBy("updatedAt", "desc"),
-                        limit(widget.config.limit || 5)
+                        limit(articleLimit)
                     );
                 }
 
@@ -216,7 +223,9 @@ export default function LayoutsPage() {
                     <div className="flex-1">
                     <h3 className="font-semibold">{widget.name}</h3>
                     {widget.config && (
-                        <p className="text-sm text-muted-foreground capitalize">{widget.config.type}: {widget.config.value}</p>
+                       <p className="text-sm text-muted-foreground capitalize">
+                            {widget.config.value ? `${widget.config.type}: ${widget.config.value}` : 'Latest Articles'}
+                        </p>
                     )}
                     </div>
                      <Button size="sm" variant="outline" onClick={() => handleAddWidget(widget)}>
