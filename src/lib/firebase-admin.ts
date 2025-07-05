@@ -1,27 +1,25 @@
 import admin from 'firebase-admin';
+import dotenv from 'dotenv';
 
-// This is a robust singleton pattern to ensure Firebase Admin is initialized only once,
-// which is crucial in a development environment with hot-reloading.
+// Load environment variables from .env file.
+// This is crucial for the server-side Admin SDK to find the correct project.
+dotenv.config();
 
-const getFirebaseAdmin = () => {
-  // If the app is already initialized, return the existing app.
-  if (admin.apps.length > 0) {
-    return admin.app();
-  }
-  
-  // If not initialized, initialize it and configure its settings.
-  const app = admin.initializeApp();
-  
-  // Use REST transport to avoid potential gRPC issues in some environments.
-  // This is set only once during the initial setup.
-  admin.firestore(app).settings({ preferRest: true });
-  
-  return app;
-};
+const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-// Get the singleton instance of the Firebase Admin app.
-const app = getFirebaseAdmin();
+// This robust singleton pattern prevents re-initializing the Firebase Admin App
+// during hot-reloads in development.
+if (!admin.apps.length) {
+  // The Admin SDK needs to know which project to connect to.
+  // We explicitly provide the project ID from the environment variables.
+  admin.initializeApp({
+    // If projectId is not found, the SDK will throw an error, which is intended.
+    // In a deployed Firebase environment, this might be discovered automatically,
+    // but explicitly setting it is more robust.
+    projectId: projectId,
+  });
+}
 
 // Export the initialized services.
-export const adminDb = admin.firestore(app);
-export const adminAuth = admin.auth(app);
+export const adminDb = admin.firestore();
+export const adminAuth = admin.auth();
