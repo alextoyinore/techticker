@@ -1,62 +1,64 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if the user is part of the CMS team.
-    function isCMSUser() {
-      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      return role in ['admin', 'superadmin', 'editor', 'writer'];
+
+    // Helper function to check for admin-level roles
+    function isCMSAdmin() {
+      return request.auth.token.role in ['superadmin', 'admin', 'editor', 'writer'];
     }
 
-    // Publicly readable collections
+    match /layouts/{layoutId} {
+      allow read, write: if isCMSAdmin();
+    }
+
+    match /widgets/{widgetId} {
+        allow read, write: if isCMSAdmin();
+    }
+
     match /articles/{articleId} {
-      // Anyone can read published articles
-      allow read: if resource.data.status == 'Published';
-      // Only CMS users can write
-      allow write: if request.auth.uid != null && isCMSUser();
+      // Admins can do anything
+      allow read, write: if isCMSAdmin();
+
+      // Public can only read published articles
+      allow get: if resource.data.status == 'Published';
     }
 
     match /pages/{pageId} {
-       // Anyone can read published pages
-      allow read: if resource.data.status == 'Published';
-      // Only CMS users can write
-      allow write: if request.auth.uid != null && isCMSUser();
-    }
-    
-    match /comments/{commentId} {
-      // Anyone can read approved comments
-      allow read: if resource.data.status == 'Approved';
-      // Any authenticated user can create a comment (will be pending)
-      allow create: if request.auth.uid != null;
-      // Only CMS users can update/delete comments
-      allow update, delete: if request.auth.uid != null && isCMSUser();
-    }
-    
-    // Admin-only collections that require a CMS role to access.
-    match /layouts/{docId} {
-      allow read, write: if request.auth.uid != null && isCMSUser();
-    }
-    
-    match /widgets/{docId} {
-      allow read, write: if request.auth.uid != null && isCMSUser();
+      // Admins can read and write all pages
+      allow read, write: if isCMSAdmin();
+      
+      // Public can only read published pages
+      allow get: if resource.data.status == 'Published';
     }
 
-    match /categories/{docId} {
-      allow read, write: if request.auth.uid != null && isCMSUser();
+    match /categories/{categoryId} {
+        allow read, write: if isCMSAdmin();
     }
-    
-    // Users can update their own profile. CMS users can read all profiles.
+
+    match /comments/{commentId} {
+        // Admins can read/write any comment
+        allow read, write: if isCMSAdmin();
+        
+        // Authenticated users can create comments
+        allow create: if request.auth != null;
+        
+        // Public can only read approved comments
+        allow list: if resource.data.status == 'Approved';
+    }
+
     match /users/{userId} {
-      allow read: if request.auth.uid != null && isCMSUser();
-      allow update: if request.auth.uid == userId;
-      // Create/delete is handled by secure cloud functions.
+      // Admins can read all user docs
+      allow read: if isCMSAdmin();
+      
+      // Admins can write to any user doc, users can only write to their own
+      allow write: if isCMSAdmin() || request.auth.uid == userId;
     }
     
-    // Allow authenticated users to trigger emails.
     match /mail/{docId} {
-        allow create: if request.auth.uid != null;
+      // Only server-side admin SDK can create mail documents
+      allow read: if false;
+      allow write: if request.auth == null;
     }
   }
 }
