@@ -84,11 +84,9 @@ export default function AdminLayout({
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <div className="flex items-center p-2">
-            <h1 className="text-xl font-bold font-headline text-sidebar-foreground">
-              TechTicker
-            </h1>
-          </div>
+          <h1 className="text-xl font-bold font-headline text-sidebar-foreground">
+            TechTicker
+          </h1>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
