@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, Wand2, ImageIcon } from 'lucide-react';
 import { generateExcerpt } from '@/ai/flows/summarize-flow';
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, serverTimestamp, doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from '@/context/auth-context';
 
@@ -25,9 +25,11 @@ interface Category {
 export default function EditorPage() {
     const { user } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [isSaving, startSavingTransition] = useTransition();
 
     // Form state
+    const [articleId, setArticleId] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [excerpt, setExcerpt] = useState('');
@@ -47,6 +49,35 @@ export default function EditorPage() {
     // Categories state
     const [categories, setCategories] = useState<Category[]>([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
+
+    useEffect(() => {
+        const articleIdParam = searchParams.get('id');
+        if (articleIdParam) {
+            setArticleId(articleIdParam);
+            const fetchArticle = async () => {
+                try {
+                    const articleDocRef = doc(db, 'articles', articleIdParam);
+                    const docSnap = await getDoc(articleDocRef);
+                    if (docSnap.exists()) {
+                        const articleData = docSnap.data();
+                        setTitle(articleData.title || '');
+                        setContent(articleData.content || '');
+                        setExcerpt(articleData.excerpt || '');
+                        setSelectedCategory(articleData.categoryId || '');
+                        setTags(articleData.tags || []);
+                        setFeaturedImage(articleData.featuredImage || null);
+                    } else {
+                        toast({ variant: 'destructive', title: 'Error', description: 'Article not found.' });
+                        router.push('/content');
+                    }
+                } catch (error) {
+                    console.error("Error fetching article:", error);
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch article.' });
+                }
+            };
+            fetchArticle();
+        }
+    }, [searchParams, router, toast]);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -180,21 +211,26 @@ export default function EditorPage() {
         
         startSavingTransition(async () => {
             try {
-                const articleData = {
+                const articleData: any = {
                     title,
                     content,
                     excerpt,
                     featuredImage,
-                    categoryId: selectedCategory,
-                    tags: tags,
+                    categoryId: selectedCategory || '',
+                    tags: tags || [],
                     status,
                     authorId: user.uid,
                     authorName: user.displayName || user.email,
-                    createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                 };
 
-                await addDoc(collection(db, "articles"), articleData);
+                if (articleId) {
+                    const articleDocRef = doc(db, "articles", articleId);
+                    await updateDoc(articleDocRef, articleData);
+                } else {
+                    articleData.createdAt = serverTimestamp();
+                    await addDoc(collection(db, "articles"), articleData);
+                }
 
                 toast({ title: 'Success', description: `Article saved as ${status}.` });
                 router.push('/content');
@@ -224,7 +260,7 @@ export default function EditorPage() {
             </div>
             <div className="lg:col-span-1 flex flex-col gap-8">
                 <div className="space-y-4">
-                    <h3 className="text-xl font-semibold font-headline">Publish</h3>
+                    <h3 className="text-xl font-semibold font-headline">{articleId ? 'Update' : 'Publish'}</h3>
                     <div className="flex flex-col gap-4">
                         <Button onClick={() => handleSave('Published')} disabled={isSaving || isUploading || isGeneratingExcerpt || isGeneratingTags}>
                             {isSaving ? <><LoaderCircle className="animate-spin" /> Publishing...</> : 'Publish Article'}

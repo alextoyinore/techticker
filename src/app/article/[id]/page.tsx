@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, User } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, getDoc, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore'; 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
@@ -27,45 +28,89 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { CircleUser, Globe, LayoutGrid, LoaderCircle, LogOut, Moon, Monitor, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import Image from 'next/image';
 
-const mockArticle = {
-  title: 'The Future is Now: A Deep Dive into Quantum Computing',
-  author: 'Dr. Evelyn Reed',
-  date: 'October 26, 2023',
-  content: `
-Quantum computing, once a realm of theoretical physics, is rapidly becoming a tangible reality. Unlike classical computers that store information in bits as either 0s or 1s, quantum computers use qubits. A qubit can exist as a 0, a 1, or a superposition of both, allowing for an exponential increase in computational power.
+interface Article {
+    id: string;
+    title: string;
+    authorName: string;
+    updatedAt: Date;
+    content: string;
+    status: 'Published' | 'Draft';
+    featuredImage?: string;
+}
 
-This paradigm shift promises to revolutionize fields from medicine and materials science to finance and artificial intelligence. Imagine developing new drugs in a fraction of the time, creating novel materials with unprecedented properties, or building financial models that can predict market fluctuations with uncanny accuracy. These are not science fiction scenarios; they are the potential applications that researchers are actively exploring.
+interface Comment {
+    id: string;
+    authorName: string;
+    authorAvatar: string;
+    text: string;
+    timestamp: Date;
+}
 
-However, the path to a fully-functional, fault-tolerant quantum computer is fraught with challenges. Qubits are notoriously fragile and susceptible to "decoherence," where they lose their quantum properties due to interaction with the environment. Engineers and physicists are in a global race to develop better hardware, error-correction codes, and algorithms to overcome these hurdles. The journey is as exciting as the destination itself.
-  `,
-};
-
-const mockComments = [
-    {
-        id: '1',
-        author: 'Alex Turner',
-        avatar: "https://placehold.co/40x40.png",
-        fallback: 'AT',
-        text: 'This is a fantastic article! Really well-written and insightful. I learned a lot.',
-        timestamp: new Date('2023-10-21'),
-    },
-    {
-        id: '2',
-        author: 'Samantha Bee',
-        avatar: "https://placehold.co/40x40.png",
-        fallback: 'SB',
-        text: "I'm still trying to wrap my head around superposition. It's mind-bending!",
-        timestamp: new Date('2023-10-22'),
-    },
-];
 
 export default function ArticlePage() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const { setTheme } = useTheme();
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  const params = useParams();
+  const articleId = params.id as string;
+
+  const [article, setArticle] = useState<Article | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loadingArticle, setLoadingArticle] = useState(true);
+
+  useEffect(() => {
+    if (!articleId) return;
+
+    const fetchArticleAndComments = async () => {
+        setLoadingArticle(true);
+        const articleRef = doc(db, 'articles', articleId);
+        const articleSnap = await getDoc(articleRef);
+
+        if (articleSnap.exists() && articleSnap.data().status === 'Published') {
+            const data = articleSnap.data();
+            setArticle({
+                id: articleSnap.id,
+                title: data.title,
+                authorName: data.authorName,
+                updatedAt: (data.updatedAt as Timestamp).toDate(),
+                content: data.content,
+                status: data.status,
+                featuredImage: data.featuredImage,
+            });
+
+            const commentsQuery = query(
+                collection(db, 'comments'),
+                where('articleId', '==', articleId),
+                where('status', '==', 'Approved'),
+                orderBy('timestamp', 'desc')
+            );
+            const commentsSnap = await getDocs(commentsQuery);
+            const commentsData = commentsSnap.docs.map(doc => {
+                const commentData = doc.data();
+                return {
+                    id: doc.id,
+                    authorName: commentData.authorName,
+                    authorAvatar: commentData.authorAvatar || `https://placehold.co/40x40.png`,
+                    text: commentData.text,
+                    timestamp: (commentData.timestamp as Timestamp)?.toDate() || new Date(),
+                }
+            }) as Comment[];
+            setComments(commentsData);
+
+        } else {
+            setArticle(null);
+        }
+        setLoadingArticle(false);
+    };
+
+    fetchArticleAndComments();
+  }, [articleId]);
+
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +119,7 @@ export default function ArticlePage() {
     setIsSubmitting(true);
     try {
       await addDoc(collection(db, 'comments'), {
-        articleId: 'quantum-computing-101', // mock article id
+        articleId: articleId,
         text: newComment,
         authorId: user.uid,
         authorName: user.displayName || user.email,
@@ -92,14 +137,43 @@ export default function ArticlePage() {
     }
   };
 
+  if (loadingArticle || authLoading) {
+      return (
+          <div className="flex min-h-screen w-full items-center justify-center">
+              <LoaderCircle className="animate-spin h-8 w-8" />
+          </div>
+      );
+  }
+
+  if (!article) {
+      return (
+        <>
+            <header className="flex h-16 items-center justify-between border-b bg-background px-6 sticky top-0 z-50">
+                <Link href="/" className="flex items-center">
+                    <span className="font-bold font-headline">TechTicker</span>
+                </Link>
+            </header>
+            <div className="flex h-[calc(100vh-4rem)] w-full items-center justify-center text-center">
+              <div>
+                  <h1 className="text-4xl font-bold">404</h1>
+                  <p className="text-muted-foreground">Article not found or not published.</p>
+                  <Button asChild className="mt-4">
+                      <Link href="/">Go Home</Link>
+                  </Button>
+              </div>
+            </div>
+        </>
+      )
+  }
+
   return (
     <>
         <header className="flex h-16 items-center justify-between border-b bg-background px-6 sticky top-0 z-50">
-            <Link href="/article" className="flex items-center">
+            <Link href="/" className="flex items-center">
                 <span className="font-bold font-headline">TechTicker</span>
             </Link>
             <div className="flex items-center gap-2">
-                {loading ? (
+                {authLoading ? (
                   <LoaderCircle className="h-5 w-5 animate-spin" />
                 ) : user ? (
                   <DropdownMenu>
@@ -132,12 +206,6 @@ export default function ArticlePage() {
                         <Link href="/dashboard">
                           <LayoutGrid className="h-4 w-4" />
                           <span>Dashboard</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/article">
-                          <Globe className="h-4 w-4" />
-                          <span>View Site</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -180,24 +248,29 @@ export default function ArticlePage() {
 
         <main className="container mx-auto max-w-4xl py-8 px-4">
             <article className="prose dark:prose-invert lg:prose-xl max-w-none">
-                <h1>{mockArticle.title}</h1>
+                <h1>{article.title}</h1>
                 <div className="flex items-center gap-4 text-muted-foreground">
-                    <span>By {mockArticle.author}</span>
+                    <span>By {article.authorName}</span>
                     <span>&bull;</span>
-                    <span>{mockArticle.date}</span>
+                    <span>{article.updatedAt.toLocaleDateString()}</span>
                 </div>
+                 {article.featuredImage && (
+                    <div className="relative w-full aspect-video my-8">
+                        <Image src={article.featuredImage} alt={article.title} fill className="object-cover rounded-lg" />
+                    </div>
+                )}
                 <Separator className="my-8" />
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{mockArticle.content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.content}</ReactMarkdown>
             </article>
 
             <Separator className="my-12" />
 
             <section id="comments">
-                <h2 className="text-3xl font-bold font-headline mb-8">Comments ({mockComments.length})</h2>
+                <h2 className="text-3xl font-bold font-headline mb-8">Comments ({comments.length})</h2>
 
                 <Card>
                     <CardContent className="p-6">
-                        {loading ? (
+                        {authLoading ? (
                             <div className="flex items-center justify-center p-8">
                                 <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
                             </div>
@@ -229,15 +302,15 @@ export default function ArticlePage() {
                 </Card>
 
                 <div className="space-y-6 mt-8">
-                    {mockComments.map(comment => (
+                    {comments.map(comment => (
                         <div key={comment.id} className="flex items-start gap-4">
                              <Avatar className="h-10 w-10 border">
-                                <AvatarImage src={comment.avatar} />
-                                <AvatarFallback>{comment.fallback}</AvatarFallback>
+                                <AvatarImage src={comment.authorAvatar} />
+                                <AvatarFallback>{comment.authorName.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                    <p className="font-semibold">{comment.author}</p>
+                                    <p className="font-semibold">{comment.authorName}</p>
                                     <p className="text-xs text-muted-foreground">
                                         {comment.timestamp.toLocaleDateString()}
                                     </p>
