@@ -72,7 +72,7 @@ export default function UsersPage() {
                     email: data.email,
                     role: data.role,
                     joined: new Date().toLocaleDateString(), 
-                    avatar: data.photoURL || `https://placehold.co/40x40.png`,
+                    avatar: data.photoURL || '',
                     fallback: (data.displayName || data.email).charAt(0).toUpperCase(),
                 }
             }) as User[];
