@@ -8,6 +8,7 @@ import {
   Globe,
   LayoutGrid,
   LayoutPanelLeft,
+  LayoutList,
   LoaderCircle,
   LogOut,
   MessageSquare,
@@ -110,8 +111,20 @@ export default function AdminLayout({
                   tooltip="Content"
                 >
                   <Link href="/content">
-                    <FileText />
+                    <LayoutList />
                     <span>Content</span>
+                  </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/pages")}
+                  tooltip="Pages"
+                >
+                  <Link href="/pages">
+                    <FileText />
+                    <span>Pages</span>
                   </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
