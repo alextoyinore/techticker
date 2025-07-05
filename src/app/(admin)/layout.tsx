@@ -83,12 +83,15 @@ export default function AdminLayout({
   return (
     <SidebarProvider>
       <Sidebar>
-        <SidebarHeader className="px-4">
+        <SidebarHeader className="px-4 pt-2">
           <h1 className="text-xl font-bold font-headline text-sidebar-foreground">
             TechTicker
           </h1>
         </SidebarHeader>
-        <SidebarContent className="px-2 mt-6">
+        <div className="px-4 my-2">
+            <div className="h-px w-full bg-gradient-to-r from-transparent via-sidebar-border/50 to-transparent" />
+        </div>
+        <SidebarContent className="px-2 mt-2">
           <SidebarMenu>
             <SidebarMenuItem>
                 <SidebarMenuButton
