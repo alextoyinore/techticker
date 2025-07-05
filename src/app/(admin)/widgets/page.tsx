@@ -43,6 +43,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -154,9 +155,16 @@ export default function WidgetsPage() {
         setWidgetName(widget.name);
         setWidgetDescription(widget.description);
         setWidgetHtml(widget.html);
-        setWidgetConfigType(widget.config?.type || 'category');
-        setWidgetConfigValue(widget.config?.value || '');
-        setWidgetConfigLimit(widget.config?.limit || 5);
+        if (widget.config) {
+            setWidgetConfigType(widget.config.type);
+            setWidgetConfigValue(widget.config.value);
+            setWidgetConfigLimit(widget.config.limit);
+        } else {
+            // Provide default values if config is missing
+            setWidgetConfigType('category');
+            setWidgetConfigValue('');
+            setWidgetConfigLimit(5);
+        }
         setIsDialogOpen(true);
     };
 
@@ -253,58 +261,60 @@ export default function WidgetsPage() {
                                 : 'Use AI to generate HTML for a widget, then configure its content source.'}
                         </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-6 py-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Widget Name</Label>
-                                <Input id="name" value={widgetName} onChange={(e) => setWidgetName(e.target.value)} placeholder="e.g., Featured Articles" required />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="description">Describe the widget layout</Label>
-                                <Textarea id="description" value={widgetDescription} onChange={(e) => setWidgetDescription(e.target.value)} placeholder="e.g., A 3-column grid of cards with a large image, title, and excerpt." required />
-                                <Button type="button" variant="outline" size="sm" onClick={handleGenerateHtml} disabled={isGenerating}>
-                                    {isGenerating ? <><LoaderCircle className="animate-spin" /> Generating...</> : <><Wand2 className="mr-2 h-4 w-4" /> Generate with AI</>}
-                                </Button>
-                            </div>
-                            
-                            <div className="space-y-2">
-                                <Label htmlFor="html">Generated HTML</Label>
-                                <Textarea id="html" value={widgetHtml} onChange={(e) => setWidgetHtml(e.target.value)} placeholder="AI-generated HTML will appear here." rows={8} className="font-mono text-xs" required />
-                                <p className="text-sm text-muted-foreground">You can manually edit the generated HTML.</p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <ScrollArea className="h-[60vh] pr-4">
+                            <div className="grid gap-6 py-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="config-type">Content Source</Label>
-                                    <Select value={widgetConfigType} onValueChange={(v) => setWidgetConfigType(v as any)}>
-                                        <SelectTrigger id="config-type"><SelectValue/></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="category">Category</SelectItem>
-                                            <SelectItem value="tag">Tag</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <Label htmlFor="name">Widget Name</Label>
+                                    <Input id="name" value={widgetName} onChange={(e) => setWidgetName(e.target.value)} placeholder="e.g., Featured Articles" required />
                                 </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="config-value">{widgetConfigType === 'category' ? 'Select Category' : 'Enter Tag'}</Label>
-                                    {widgetConfigType === 'category' ? (
-                                        <Select value={widgetConfigValue} onValueChange={setWidgetConfigValue} required>
-                                            <SelectTrigger id="config-value"><SelectValue placeholder={loadingCategories ? 'Loading...' : 'Select a category'} /></SelectTrigger>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="description">Describe the widget layout</Label>
+                                    <Textarea id="description" value={widgetDescription} onChange={(e) => setWidgetDescription(e.target.value)} placeholder="e.g., A 3-column grid of cards with a large image, title, and excerpt." required />
+                                    <Button type="button" variant="outline" size="sm" onClick={handleGenerateHtml} disabled={isGenerating}>
+                                        {isGenerating ? <><LoaderCircle className="animate-spin" /> Generating...</> : <><Wand2 className="mr-2 h-4 w-4" /> Generate with AI</>}
+                                    </Button>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <Label htmlFor="html">Generated HTML</Label>
+                                    <Textarea id="html" value={widgetHtml} onChange={(e) => setWidgetHtml(e.target.value)} placeholder="AI-generated HTML will appear here." rows={8} className="font-mono text-xs" required />
+                                    <p className="text-sm text-muted-foreground">You can manually edit the generated HTML.</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="config-type">Content Source</Label>
+                                        <Select value={widgetConfigType} onValueChange={(v) => setWidgetConfigType(v as any)}>
+                                            <SelectTrigger id="config-type"><SelectValue/></SelectTrigger>
                                             <SelectContent>
-                                                {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
+                                                <SelectItem value="category">Category</SelectItem>
+                                                <SelectItem value="tag">Tag</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                    ) : (
-                                        <Input id="config-value" value={widgetConfigValue} onChange={(e) => setWidgetConfigValue(e.target.value)} placeholder="e.g., 'AI'" required/>
-                                    )}
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="config-limit">Item Limit</Label>
-                                    <Input id="config-limit" type="number" value={widgetConfigLimit} onChange={(e) => setWidgetConfigLimit(parseInt(e.target.value, 10))} min={1} max={20} required/>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="config-value">{widgetConfigType === 'category' ? 'Select Category' : 'Enter Tag'}</Label>
+                                        {widgetConfigType === 'category' ? (
+                                            <Select value={widgetConfigValue} onValueChange={setWidgetConfigValue} required>
+                                                <SelectTrigger id="config-value"><SelectValue placeholder={loadingCategories ? 'Loading...' : 'Select a category'} /></SelectTrigger>
+                                                <SelectContent>
+                                                    {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <Input id="config-value" value={widgetConfigValue} onChange={(e) => setWidgetConfigValue(e.target.value)} placeholder="e.g., 'AI'" required/>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="config-limit">Item Limit</Label>
+                                        <Input id="config-limit" type="number" value={widgetConfigLimit} onChange={(e) => setWidgetConfigLimit(parseInt(e.target.value, 10))} min={1} max={20} required/>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                        </ScrollArea>
+                        <DialogFooter className="pt-4 border-t">
+                            <Button type="button" variant="ghost" onClick={() => handleDialogOpenChange(false)}>Cancel</Button>
                             <Button type="submit" disabled={isSaving}>
                                 {isSaving ? <><LoaderCircle className="animate-spin" /> Saving...</> : (editingWidget ? 'Save Changes' : 'Create Widget')}
                             </Button>
