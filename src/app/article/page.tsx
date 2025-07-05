@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useAuth, User } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,16 +21,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { LoaderCircle } from 'lucide-react';
+import { Globe, LayoutGrid, LoaderCircle, LogOut, CircleUser } from 'lucide-react';
 
 const mockArticle = {
   title: 'The Future is Now: A Deep Dive into Quantum Computing',
   author: 'Dr. Evelyn Reed',
   date: 'October 26, 2023',
   content: `
-    <p>Quantum computing, once a realm of theoretical physics, is rapidly becoming a tangible reality. Unlike classical computers that store information in bits as either 0s or 1s, quantum computers use qubits. A qubit can exist as a 0, a 1, or a superposition of both, allowing for an exponential increase in computational power.</p>
-    <p>This paradigm shift promises to revolutionize fields from medicine and materials science to finance and artificial intelligence. Imagine developing new drugs in a fraction of the time, creating novel materials with unprecedented properties, or building financial models that can predict market fluctuations with uncanny accuracy. These are not science fiction scenarios; they are the potential applications that researchers are actively exploring.</p>
-    <p>However, the path to a fully-functional, fault-tolerant quantum computer is fraught with challenges. Qubits are notoriously fragile and susceptible to "decoherence," where they lose their quantum properties due to interaction with the environment. Engineers and physicists are in a global race to develop better hardware, error-correction codes, and algorithms to overcome these hurdles. The journey is as exciting as the destination itself.</p>
+Quantum computing, once a realm of theoretical physics, is rapidly becoming a tangible reality. Unlike classical computers that store information in bits as either 0s or 1s, quantum computers use qubits. A qubit can exist as a 0, a 1, or a superposition of both, allowing for an exponential increase in computational power.
+
+This paradigm shift promises to revolutionize fields from medicine and materials science to finance and artificial intelligence. Imagine developing new drugs in a fraction of the time, creating novel materials with unprecedented properties, or building financial models that can predict market fluctuations with uncanny accuracy. These are not science fiction scenarios; they are the potential applications that researchers are actively exploring.
+
+However, the path to a fully-functional, fault-tolerant quantum computer is fraught with challenges. Qubits are notoriously fragile and susceptible to "decoherence," where they lose their quantum properties due to interaction with the environment. Engineers and physicists are in a global race to develop better hardware, error-correction codes, and algorithms to overcome these hurdles. The journey is as exciting as the destination itself.
   `,
 };
 
@@ -113,13 +117,28 @@ export default function ArticlePage() {
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link href="/profile">Profile</Link>
+                        <Link href="/profile">
+                          <CircleUser className="h-4 w-4" />
+                          <span>Profile</span>
+                        </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href="/dashboard">Dashboard</Link>
+                        <Link href="/dashboard">
+                          <LayoutGrid className="h-4 w-4" />
+                          <span>Dashboard</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/article">
+                          <Globe className="h-4 w-4" />
+                          <span>View Site</span>
+                        </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+                      <DropdownMenuItem onClick={logout}>
+                        <LogOut className="h-4 w-4" />
+                        <span>Logout</span>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
@@ -139,7 +158,7 @@ export default function ArticlePage() {
                     <span>{mockArticle.date}</span>
                 </div>
                 <Separator className="my-8" />
-                <div dangerouslySetInnerHTML={{ __html: mockArticle.content }} />
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{mockArticle.content}</ReactMarkdown>
             </article>
 
             <Separator className="my-12" />

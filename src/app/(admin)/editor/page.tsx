@@ -1,12 +1,16 @@
+'use client';
+
+import { useState } from 'react';
 import RichTextEditor from "@/components/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 
 export default function EditorPage() {
+    const [content, setContent] = useState('');
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             <div className="lg:col-span-2">
@@ -16,7 +20,7 @@ export default function EditorPage() {
                         <Input id="title" placeholder="Enter a catchy title..." className="text-2xl font-headline h-auto p-2 border-0 shadow-none focus-visible:ring-0" />
                     </CardHeader>
                     <CardContent>
-                        <RichTextEditor />
+                        <RichTextEditor value={content} onChange={setContent} />
                     </CardContent>
                 </Card>
             </div>

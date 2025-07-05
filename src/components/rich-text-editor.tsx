@@ -1,134 +1,40 @@
+'use client';
 
-"use client"
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent } from '@/components/ui/card';
 
-import { getBlockAbove, Plate, useEditorRef } from "@udecode/plate-common";
-import { setNodes } from 'slate';
-import { Editable } from "slate-react";
-import {
-  MARK_BOLD,
-  MARK_CODE,
-  MARK_ITALIC,
-  MARK_STRIKETHROUGH,
-  MARK_UNDERLINE,
-} from '@udecode/plate-basic-marks';
-import { MARK_HIGHLIGHT } from "@udecode/plate-highlight";
-import { ELEMENT_BLOCKQUOTE } from "@udecode/plate-block-quote";
-import { ELEMENT_H1, ELEMENT_H2, ELEMENT_H3 } from "@udecode/plate-heading";
-import { ELEMENT_OL, ELEMENT_UL, toggleList } from "@udecode/plate-list";
-import { ELEMENT_PARAGRAPH } from "@udecode/plate-paragraph";
-import { insertTable } from "@udecode/plate-table";
-import {
-    Quote,
-    Bold,
-    Code,
-    Heading1,
-    Heading2,
-    Heading3,
-    Highlighter,
-    Italic,
-    List,
-    ListOrdered,
-    Strikethrough,
-    Table,
-    Underline,
-} from 'lucide-react';
-
-import { plugins } from "@/lib/plate-plugins";
-import { Button } from "./ui/button";
-import { Separator } from "./ui/separator";
-import { PlateMarkToolbarButton, Toolbar, ToolbarGroup, LinkFloatingToolbar } from "./plate-ui";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-
-
-const EditorContent = () => {
-    const editor = useEditorRef();
-
-    const toggleBlock = (format: string) => {
-        if (!editor) return;
-
-        const block = getBlockAbove(editor, {
-            match: { type: [format, ELEMENT_PARAGRAPH] },
-        });
-        const isActive = !!block && block[0].type === format;
-
-        setNodes(editor, {
-            type: isActive ? ELEMENT_PARAGRAPH : format,
-        });
-    };
-
-    return (
-        <div className="relative">
-            <Toolbar className="flex flex-wrap items-center gap-1 rounded-t-md border-b-0 border p-2 bg-secondary/50">
-                <ToolbarGroup>
-                    <PlateMarkToolbarButton nodeType={MARK_BOLD} tooltip="Bold (⌘+B)">
-                        <Bold className="h-4 w-4" />
-                    </PlateMarkToolbarButton>
-                    <PlateMarkToolbarButton nodeType={MARK_ITALIC} tooltip="Italic (⌘+I)">
-                        <Italic className="h-4 w-4" />
-                    </PlateMarkToolbarButton>
-                    <PlateMarkToolbarButton nodeType={MARK_UNDERLINE} tooltip="Underline (⌘+U)">
-                        <Underline className="h-4 w-4" />
-                    </PlateMarkToolbarButton>
-                    <PlateMarkToolbarButton nodeType={MARK_STRIKETHROUGH} tooltip="Strikethrough (⌘+⇧+X)">
-                        <Strikethrough className="h-4 w-4" />
-                    </PlateMarkToolbarButton>
-                    <PlateMarkToolbarButton nodeType={MARK_CODE} tooltip="Code (⌘+E)">
-                        <Code className="h-4 w-4" />
-                    </PlateMarkToolbarButton>
-                    <PlateMarkToolbarButton nodeType={MARK_HIGHLIGHT} tooltip="Highlight (⌘+⇧+H)">
-                        <Highlighter className="h-4 w-4" />
-                    </PlateMarkToolbarButton>
-                </ToolbarGroup>
-                <Separator orientation="vertical" className="h-6 mx-1" />
-                <ToolbarGroup>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(ELEMENT_H1)}><Heading1 className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(ELEMENT_H2)}><Heading2 className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(ELEMENT_H3)}><Heading3 className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleBlock(ELEMENT_BLOCKQUOTE)}><Quote className="h-4 w-4" /></Button>
-                </ToolbarGroup>
-                <Separator orientation="vertical" className="h-6 mx-1" />
-                <ToolbarGroup>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleList(editor, { type: ELEMENT_UL})}><List className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => toggleList(editor, { type: ELEMENT_OL})}><ListOrdered className="h-4 w-4" /></Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-8 w-8">
-                            <Table className="h-4 w-4" />
-                        </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                        <DropdownMenuItem
-                            onSelect={() => {
-                            insertTable(editor);
-                            }}
-                        >
-                            Insert Table
-                        </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </ToolbarGroup>
-            </Toolbar>
-            <div className="rounded-b-md border-input border p-4">
-                <Editable 
-                    placeholder="Start writing your masterpiece..."
-                    className="min-h-[400px] focus-visible:ring-0 focus-visible:ring-offset-0 border-none p-0"
-                    autoFocus
-                />
-                <LinkFloatingToolbar />
-            </div>
-      </div>
-    );
+interface RichTextEditorProps {
+  value: string;
+  onChange: (value: string) => void;
 }
 
-export default function RichTextEditor() {
-    return (
-        <Plate plugins={plugins}>
-            <EditorContent />
-        </Plate>
-    );
+export default function RichTextEditor({ value, onChange }: RichTextEditorProps) {
+  return (
+    <Tabs defaultValue="write" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="write">Write</TabsTrigger>
+        <TabsTrigger value="preview">Preview</TabsTrigger>
+      </TabsList>
+      <TabsContent value="write">
+        <Textarea
+          placeholder="Start writing your masterpiece in Markdown..."
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="min-h-[400px] w-full rounded-md border border-input p-4 font-mono"
+        />
+      </TabsContent>
+      <TabsContent value="preview">
+        <Card className="min-h-[400px]">
+          <CardContent className="p-6">
+            <article className="prose dark:prose-invert lg:prose-xl max-w-none">
+              {value ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown> : <p className="text-muted-foreground">Preview will appear here.</p>}
+            </article>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  );
 }
