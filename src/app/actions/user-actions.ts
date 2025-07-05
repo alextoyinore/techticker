@@ -45,8 +45,27 @@ export async function createUser(payload: CreateUserPayload) {
             role,
             createdAt: new Date().toISOString(), // Use ISO string for consistency
         });
+
+        // 5. Add an email to the `mail` collection to be sent to the new user
+        await adminDb.collection('mail').add({
+          to: email,
+          message: {
+            subject: 'Welcome to TechTicker!',
+            html: `
+              <h1>Welcome aboard!</h1>
+              <p>A superadmin has created an account for you on TechTicker.</p>
+              <p>You can log in using the following credentials:</p>
+              <ul>
+                <li><strong>Email:</strong> ${email}</li>
+                <li><strong>Password:</strong> ${password}</li>
+              </ul>
+              <p>For security, we strongly recommend you change your password after your first login.</p>
+              <p>Welcome to the team!</p>
+            `,
+          },
+        });
         
-        // 5. Revalidate the path to refresh the user list on the client
+        // 6. Revalidate the path to refresh the user list on the client
         revalidatePath('/users');
         return { success: true, uid: userRecord.uid };
 
