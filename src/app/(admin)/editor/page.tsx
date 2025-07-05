@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, Wand2, ImageIcon } from 'lucide-react';
 import { generateExcerpt } from '@/ai/flows/summarize-flow';
@@ -10,8 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from '@/components/ui/textarea';
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from '@/context/auth-context';
 
 interface Category {
     id: string;
@@ -19,17 +21,27 @@ interface Category {
 }
 
 export default function EditorPage() {
+    const { user } = useAuth();
+    const router = useRouter();
+    const [isSaving, startSavingTransition] = useTransition();
+
+    // Form state
+    const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [excerpt, setExcerpt] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [tags, setTags] = useState('');
+    
+    // AI excerpt generation state
     const [isGenerating, setIsGenerating] = useState(false);
     const { toast } = useToast();
 
-    // New state for featured image
+    // Featured image state
     const [featuredImage, setFeaturedImage] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // New state for categories
+    // Categories state
     const [categories, setCategories] = useState<Category[]>([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
 
@@ -81,32 +93,89 @@ export default function EditorPage() {
         const file = event.target.files?.[0];
         if (!file) return;
 
+        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+        const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+        if (!cloudName || !uploadPreset) {
+            toast({
+                variant: 'destructive',
+                title: 'Cloudinary not configured',
+                description: 'Please set Cloudinary environment variables in the .env file.',
+            });
+            return;
+        }
+
         setIsUploading(true);
-        // TODO: Replace this with your actual Cloudinary upload logic.
-        // This placeholder code reads the file as a data URI for local preview.
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', uploadPreset);
+
         try {
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 1500)); 
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFeaturedImage(reader.result as string);
-                toast({
-                    title: 'Image "uploaded"',
-                    description: 'This is a local preview. Integrate your upload service.',
-                });
-            };
-            reader.readAsDataURL(file);
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error('Image upload failed');
+            }
+
+            const data = await response.json();
+            setFeaturedImage(data.secure_url);
+            toast({ title: 'Success', description: 'Image uploaded successfully.' });
         } catch (error) {
-            console.error("Error 'uploading' image:", error);
+            console.error("Error uploading image:", error);
             toast({
                 variant: 'destructive',
                 title: 'Upload Failed',
-                description: 'There was an error processing the image.',
+                description: 'There was an error uploading the image.',
             });
         } finally {
             setIsUploading(false);
         }
     };
+    
+    const handleSave = async (status: 'Published' | 'Draft') => {
+        if (!title.trim()) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Title is required.' });
+            return;
+        }
+        if (!content.trim()) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Content is required.' });
+            return;
+        }
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to save.' });
+            return;
+        }
+        
+        startSavingTransition(async () => {
+            try {
+                const articleData = {
+                    title,
+                    content,
+                    excerpt,
+                    featuredImage,
+                    categoryId: selectedCategory,
+                    tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+                    status,
+                    authorId: user.uid,
+                    authorName: user.displayName || user.email,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                };
+
+                await addDoc(collection(db, "articles"), articleData);
+
+                toast({ title: 'Success', description: `Article saved as ${status}.` });
+                router.push('/content');
+
+            } catch (error) {
+                console.error("Error saving article:", error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not save the article.' });
+            }
+        });
+    }
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
@@ -116,7 +185,10 @@ export default function EditorPage() {
                     <Input 
                         id="title" 
                         placeholder="Enter a catchy title..." 
-                        className="border-0 border-b border-input px-0 text-5xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none" 
+                        className="border-0 border-b border-input px-0 text-5xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        disabled={isSaving}
                     />
                  </div>
                 <RichTextEditor value={content} onChange={setContent} className="flex-grow flex flex-col" />
@@ -125,8 +197,12 @@ export default function EditorPage() {
                 <div className="space-y-4">
                     <h3 className="text-xl font-semibold font-headline">Publish</h3>
                     <div className="flex flex-col gap-4">
-                        <Button>Publish Article</Button>
-                        <Button variant="outline">Save Draft</Button>
+                        <Button onClick={() => handleSave('Published')} disabled={isSaving || isUploading}>
+                            {isSaving ? <><LoaderCircle className="animate-spin" /> Publishing...</> : 'Publish Article'}
+                        </Button>
+                        <Button variant="outline" onClick={() => handleSave('Draft')} disabled={isSaving || isUploading}>
+                            {isSaving ? <><LoaderCircle className="animate-spin" /> Saving...</> : 'Save Draft'}
+                        </Button>
                     </div>
                 </div>
                  <div className="space-y-4">
@@ -140,7 +216,7 @@ export default function EditorPage() {
                                 <p className="mt-2 text-sm">Click to upload an image</p>
                             </div>
                         )}
-                        {isUploading && (
+                        {(isUploading || isSaving) && (
                             <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-md">
                                 <LoaderCircle className="h-8 w-8 animate-spin" />
                             </div>
@@ -157,7 +233,7 @@ export default function EditorPage() {
                         variant="outline" 
                         className="w-full" 
                         onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploading}
+                        disabled={isUploading || isSaving}
                     >
                         {isUploading ? 'Uploading...' : (featuredImage ? 'Change Image' : 'Set Featured Image')}
                     </Button>
@@ -167,7 +243,11 @@ export default function EditorPage() {
                     <div className="space-y-4 pt-2">
                         <div className="space-y-2">
                             <Label htmlFor="category">Category</Label>
-                            <Select disabled={loadingCategories}>
+                            <Select 
+                                value={selectedCategory} 
+                                onValueChange={setSelectedCategory} 
+                                disabled={loadingCategories || isSaving}
+                            >
                                 <SelectTrigger>
                                     <SelectValue placeholder={loadingCategories ? "Loading..." : "Select a category"} />
                                 </SelectTrigger>
@@ -180,7 +260,13 @@ export default function EditorPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="tags">Tags</Label>
-                            <Input id="tags" placeholder="AI, Machine Learning,..." />
+                            <Input 
+                                id="tags" 
+                                placeholder="AI, Machine Learning,..." 
+                                value={tags} 
+                                onChange={(e) => setTags(e.target.value)} 
+                                disabled={isSaving}
+                            />
                         </div>
                     </div>
                 </div>
@@ -194,8 +280,9 @@ export default function EditorPage() {
                             value={excerpt}
                             onChange={(e) => setExcerpt(e.target.value)}
                             rows={4}
+                            disabled={isSaving}
                         />
-                        <Button variant="outline" size="sm" onClick={handleGenerateExcerpt} disabled={isGenerating}>
+                        <Button variant="outline" size="sm" onClick={handleGenerateExcerpt} disabled={isGenerating || isSaving}>
                              {isGenerating ? (
                                 <>
                                     <LoaderCircle className="animate-spin" />
