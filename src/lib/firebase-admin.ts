@@ -1,27 +1,27 @@
 import admin from 'firebase-admin';
 
-// Initialize Firebase Admin SDK.
-// It will automatically use the service account credentials provided by the hosting environment.
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp();
-  } catch (error: any) {
-    // In development with hot-reloading, this can sometimes be called multiple times.
-    // We can safely ignore the 'app/duplicate-app' error.
-    if (error.code !== 'app/duplicate-app') {
-      console.error('Firebase admin initialization error', error.stack);
-    }
+// This is a robust singleton pattern to ensure Firebase Admin is initialized only once,
+// which is crucial in a development environment with hot-reloading.
+
+const getFirebaseAdmin = () => {
+  // If the app is already initialized, return the existing app.
+  if (admin.apps.length > 0) {
+    return admin.app();
   }
-}
+  
+  // If not initialized, initialize it and configure its settings.
+  const app = admin.initializeApp();
+  
+  // Use REST transport to avoid potential gRPC issues in some environments.
+  // This is set only once during the initial setup.
+  admin.firestore(app).settings({ preferRest: true });
+  
+  return app;
+};
 
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
+// Get the singleton instance of the Firebase Admin app.
+const app = getFirebaseAdmin();
 
-// Use REST transport to avoid potential gRPC issues in some environments.
-// We wrap this in a try/catch to handle hot-reloading in development.
-try {
-  adminDb.settings({ preferRest: true });
-} catch (e) {
-  // This error is expected in development with hot-reloading.
-  // The settings can only be set once, so we can safely ignore the error.
-}
+// Export the initialized services.
+export const adminDb = admin.firestore(app);
+export const adminAuth = admin.auth(app);
