@@ -1,7 +1,12 @@
+'use client';
+
 import { MoreHorizontal, PlusCircle } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useState } from "react";
+import { collection, getDocs, query, orderBy, Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-import { Badge } from "@/components/ui/badge"
+import { Badge, type BadgeProps } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -26,41 +31,59 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
-const contentItems = [
-  {
-    title: "The Future of AI in Tech Journalism",
-    status: "Published",
-    author: "Jane Doe",
-    lastUpdated: "2023-10-18",
-  },
-  {
-    title: "Unboxing the New Quantum Laptop",
-    status: "Draft",
-    author: "John Smith",
-    lastUpdated: "2023-10-20",
-  },
-  {
-    title: "A Deep Dive into Sustainable Tech",
-    status: "Published",
-    author: "Emily White",
-    lastUpdated: "2023-09-05",
-  },
-  {
-    title: "Top 10 VSCode Extensions for 2024",
-    status: "In Review",
-    author: "Michael Brown",
-    lastUpdated: "2023-10-21",
-  },
-  {
-    title: "How Edge Computing is Changing the IoT",
-    status: "Published",
-    author: "Jane Doe",
-    lastUpdated: "2023-08-12",
-  },
-]
+interface Article {
+    id: string;
+    title: string;
+    status: "Published" | "Draft";
+    authorName: string;
+    updatedAt: string;
+}
 
 export default function ContentPage() {
+    const [articles, setArticles] = useState<Article[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchArticles = async () => {
+            setLoading(true);
+            try {
+                const articlesCollection = collection(db, "articles");
+                const q = query(articlesCollection, orderBy("updatedAt", "desc"));
+                const querySnapshot = await getDocs(q);
+                const articlesData = querySnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    const ts = data.updatedAt as Timestamp;
+                    return {
+                        id: doc.id,
+                        title: data.title,
+                        status: data.status,
+                        authorName: data.authorName,
+                        updatedAt: ts ? ts.toDate().toLocaleDateString() : 'N/A',
+                    }
+                }) as Article[];
+                setArticles(articlesData);
+            } catch (error) {
+                console.error("Error fetching articles:", error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch articles.' });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchArticles();
+    }, [toast]);
+
+    const getBadgeVariant = (status: Article['status']): BadgeProps['variant'] => {
+        if (status === 'Published') {
+            return 'default';
+        }
+        return 'secondary';
+    }
+
   return (
     <Card>
       <CardHeader>
@@ -93,40 +116,52 @@ export default function ContentPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {contentItems.map((item) => (
-              <TableRow key={item.title}>
-                <TableCell className="font-medium">{item.title}</TableCell>
-                <TableCell>
-                  <Badge variant={item.status === 'Draft' ? 'secondary' : 'outline'}>
-                    {item.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">{item.author}</TableCell>
-                <TableCell className="hidden md:table-cell">{item.lastUpdated}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem>View</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+            {loading ? (
+                 Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-4 w-[300px]" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell><MoreHorizontal className="h-4 w-4 text-muted-foreground" /></TableCell>
+                    </TableRow>
+                ))
+            ) : (
+                articles.map((item) => (
+                <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.title}</TableCell>
+                    <TableCell>
+                    <Badge variant={getBadgeVariant(item.status)}>
+                        {item.status}
+                    </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{item.authorName}</TableCell>
+                    <TableCell className="hidden md:table-cell">{item.updatedAt}</TableCell>
+                    <TableCell>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                        </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem>Edit</DropdownMenuItem>
+                        <DropdownMenuItem>View</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    </TableCell>
+                </TableRow>
+                ))
+            )}
           </TableBody>
         </Table>
       </CardContent>
       <CardFooter>
         <div className="text-xs text-muted-foreground">
-          Showing <strong>1-5</strong> of <strong>{contentItems.length}</strong> products
+          Showing <strong>{articles.length}</strong> of <strong>{articles.length}</strong> articles
         </div>
       </CardFooter>
     </Card>
