@@ -272,6 +272,12 @@ export default function AdminLayout({
                   <span>Dashboard</span>
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/" target="_blank">
+                  <Globe className="h-4 w-4" />
+                  <span>View Site</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
