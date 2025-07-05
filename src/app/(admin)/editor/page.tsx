@@ -80,14 +80,14 @@ export default function EditorPage() {
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-            <div className="lg:col-span-3 flex flex-col gap-4 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="lg:col-span-2 flex flex-col gap-4 h-full">
                  <div>
                     <Label htmlFor="title" className="text-sm text-muted-foreground">Article Title</Label>
                     <Input 
                         id="title" 
                         placeholder="Enter a catchy title..." 
-                        className="border-0 border-b border-input px-0 text-3xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none" 
+                        className="border-0 border-b border-input px-0 text-4xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none" 
                     />
                  </div>
                 <RichTextEditor value={content} onChange={setContent} className="flex-grow flex flex-col" />
