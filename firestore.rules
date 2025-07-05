@@ -1,46 +1,54 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check for admin roles
+    // Helper function to check if a user is an admin or editor
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'editor'];
     }
 
-    // By default, deny all reads and writes
+    // Helper function to check if a user is a content creator
+    function isWriter() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'editor', 'writer'];
+    }
+
+    // Default security rule: Deny all reads and writes
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Users can read their own data and admins can read all user data.
-    // Users can create their own document, but only admins can update roles.
+    // Users can read/update their own document and create it on signup
     match /users/{userId} {
-      allow get: if request.auth != null && request.auth.uid == userId;
-      allow list: if request.auth != null && isAdmin();
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && isAdmin();
-    }
-    
-    // Any authenticated user can read categories, but only admins can manage them.
-    match /categories/{categoryId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && isAdmin();
-    }
-    
-    // Anyone can read comments. Authenticated users can create them.
-    // Only admins can moderate (update/delete) comments.
-    match /comments/{commentId} {
-      allow read: if true;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && isAdmin();
     }
 
-    // Any authenticated user can read widgets, but only admins can manage them.
+    // Articles can be read by the public if published.
+    // All articles can be read, created, and modified by writers/admins.
+    match /articles/{articleId} {
+      allow read: if resource.data.status == 'Published' || isWriter();
+      allow create, update, delete: if isWriter();
+    }
+    
+    // Categories and Widgets can be read by anyone, but only managed by admins.
+    match /categories/{categoryId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+
     match /widgets/{widgetId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && isAdmin();
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+
+    // Comments can be created by any authenticated user.
+    // They can be read by the public if approved.
+    // Admins can read all comments and moderate them.
+    match /comments/{commentId} {
+      allow read: if resource.data.status == 'Approved' || isAdmin();
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
   }
 }
