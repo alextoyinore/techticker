@@ -1,3 +1,4 @@
+
 import React from "react";
 
 export interface LayoutTemplate {
@@ -14,11 +15,11 @@ export const layoutTemplates: LayoutTemplate[] = [
     id: 'classic-blog',
     name: 'Classic Blog',
     description: 'A main content area with a sidebar on the right.',
-    preview: (
-        <div className="grid grid-cols-3 gap-2 h-full">
-            <div className="col-span-2 bg-muted rounded-sm" />
-            <div className="col-span-1 bg-muted/50 rounded-sm" />
-        </div>
+    preview: React.createElement(
+        'div',
+        { className: "grid grid-cols-3 gap-2 h-full" },
+        React.createElement('div', { className: "col-span-2 bg-muted rounded-sm" }),
+        React.createElement('div', { className: "col-span-1 bg-muted/50 rounded-sm" })
     ),
     html: `<div className="container mx-auto py-8 px-4">
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -36,14 +37,16 @@ export const layoutTemplates: LayoutTemplate[] = [
     id: 'featured-article',
     name: 'Featured Article',
     description: 'A full-width featured section, with two columns below.',
-    preview: (
-        <div className="flex flex-col gap-2 h-full">
-            <div className="h-1/2 bg-muted rounded-sm" />
-            <div className="grid grid-cols-2 gap-2 flex-grow">
-                <div className="bg-muted/50 rounded-sm" />
-                <div className="bg-muted/50 rounded-sm" />
-            </div>
-        </div>
+    preview: React.createElement(
+        'div',
+        { className: "flex flex-col gap-2 h-full" },
+        React.createElement('div', { className: "h-1/2 bg-muted rounded-sm" }),
+        React.createElement(
+            'div',
+            { className: "grid grid-cols-2 gap-2 flex-grow" },
+            React.createElement('div', { className: "bg-muted/50 rounded-sm" }),
+            React.createElement('div', { className: "bg-muted/50 rounded-sm" })
+        )
     ),
     html: `<div className="container mx-auto py-8 px-4 space-y-8">
     <section className="w-full">
@@ -64,12 +67,12 @@ export const layoutTemplates: LayoutTemplate[] = [
     id: 'three-column',
     name: 'Three Column',
     description: 'Three equal-width columns for displaying content.',
-    preview: (
-        <div className="grid grid-cols-3 gap-2 h-full">
-            <div className="bg-muted/50 rounded-sm" />
-            <div className="bg-muted/50 rounded-sm" />
-            <div className="bg-muted/50 rounded-sm" />
-        </div>
+    preview: React.createElement(
+        'div',
+        { className: "grid grid-cols-3 gap-2 h-full" },
+        React.createElement('div', { className: "bg-muted/50 rounded-sm" }),
+        React.createElement('div', { className: "bg-muted/50 rounded-sm" }),
+        React.createElement('div', { className: "bg-muted/50 rounded-sm" })
     ),
     html: `<div className="container mx-auto py-8 px-4">
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -90,9 +93,7 @@ export const layoutTemplates: LayoutTemplate[] = [
     id: 'full-width',
     name: 'Full Width',
     description: 'A single, full-width content area.',
-    preview: (
-        <div className="bg-muted rounded-sm h-full w-full" />
-    ),
+    preview: React.createElement('div', { className: "bg-muted rounded-sm h-full w-full" }),
     html: `<div className="container mx-auto py-8 px-4">
     <main className="w-full space-y-8">
         {{{main}}}
