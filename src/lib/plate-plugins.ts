@@ -30,7 +30,6 @@ import {
   HighlightLeaf,
   HrElement,
   LinkElement,
-  LinkFloatingToolbar,
   ListElement,
   ParagraphElement,
   TableCellElement,
@@ -46,9 +45,7 @@ export const plugins = createPlugins(
     createBlockquotePlugin(),
     createCodeBlockPlugin(),
     createHorizontalRulePlugin(),
-    createLinkPlugin({
-      renderAfterEditable: LinkFloatingToolbar as any,
-    }),
+    createLinkPlugin(),
     createListPlugin(),
     createTablePlugin(),
 

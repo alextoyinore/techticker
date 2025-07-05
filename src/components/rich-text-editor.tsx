@@ -36,7 +36,7 @@ import {
 import { plugins } from "@/lib/plate-plugins";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
-import { PlateMarkToolbarButton, Toolbar, ToolbarGroup } from "./plate-ui";
+import { PlateMarkToolbarButton, Toolbar, ToolbarGroup, LinkFloatingToolbar } from "./plate-ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,6 +119,7 @@ const EditorContent = () => {
                     className="min-h-[400px] focus-visible:ring-0 focus-visible:ring-offset-0 border-none p-0"
                     autoFocus
                 />
+                <LinkFloatingToolbar />
             </div>
       </div>
     );
