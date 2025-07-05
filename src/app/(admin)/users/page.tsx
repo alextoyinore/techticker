@@ -64,6 +64,22 @@ interface User {
     fallback: string;
 }
 
+const roleHierarchy: { [key: string]: number } = {
+    user: 0,
+    writer: 1,
+    editor: 2,
+    admin: 3,
+    superadmin: 4,
+};
+
+const availableRoles: { value: string; label: string }[] = [
+    { value: 'user', label: 'User' },
+    { value: 'writer', label: 'Writer' },
+    { value: 'editor', label: 'Editor' },
+    { value: 'admin', label: 'Admin' },
+    { value: 'superadmin', label: 'Superadmin' },
+];
+
 export default function UsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -201,45 +217,54 @@ export default function UsersPage() {
                     </TableRow>
                 ))
             ) : (
-                users.map((user) => (
-                <TableRow key={user.id}>
-                    <TableCell>
-                        <div className="flex items-center gap-3">
-                            <Avatar>
-                                <AvatarImage src={user.avatar} />
-                                <AvatarFallback>{user.fallback}</AvatarFallback>
-                            </Avatar>
-                            <div className="grid gap-0.5">
-                                <div className="font-medium">{user.name}</div>
-                                <div className="text-sm text-muted-foreground">{user.email}</div>
-                            </div>
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                    <Badge variant={getRoleBadge(user.role)}>{user.role}</Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{user.joined}</TableCell>
-                    <TableCell>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost" disabled={currentUser?.role !== 'superadmin' || currentUser?.id === user.id}>
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                        </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => handleEditRoleClick(user)}>
-                                Edit Role
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteUserClick(user)}>
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    </TableCell>
-                </TableRow>
-                ))
+                users.map((user) => {
+                    const currentUserRoleLevel = roleHierarchy[currentUser?.role || 'user'] || 0;
+                    const targetUserRoleLevel = roleHierarchy[user.role || 'user'] || 0;
+                    
+                    const canManage = currentUser?.role === 'superadmin' 
+                        ? currentUser.id !== user.id
+                        : currentUserRoleLevel > targetUserRoleLevel && currentUser?.id !== user.id;
+
+                    return (
+                        <TableRow key={user.id}>
+                            <TableCell>
+                                <div className="flex items-center gap-3">
+                                    <Avatar>
+                                        <AvatarImage src={user.avatar} />
+                                        <AvatarFallback>{user.fallback}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="grid gap-0.5">
+                                        <div className="font-medium">{user.name}</div>
+                                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                                    </div>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                            <Badge variant={getRoleBadge(user.role)}>{user.role}</Badge>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">{user.joined}</TableCell>
+                            <TableCell>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button aria-haspopup="true" size="icon" variant="ghost" disabled={!canManage}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Toggle menu</span>
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem onSelect={() => handleEditRoleClick(user)}>
+                                        Edit Role
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteUserClick(user)}>
+                                        Delete
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                    )
+                })
             )}
           </TableBody>
         </Table>
@@ -260,11 +285,17 @@ export default function UsersPage() {
                             <SelectValue placeholder="Select a role" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="user">User</SelectItem>
-                            <SelectItem value="writer">Writer</SelectItem>
-                            <SelectItem value="editor">Editor</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="superadmin">Superadmin</SelectItem>
+                             {availableRoles
+                                .filter(role => {
+                                    if (currentUser?.role === 'superadmin') return true;
+                                    const currentUserRoleLevel = roleHierarchy[currentUser?.role || 'user'] || 0;
+                                    const targetRoleLevel = roleHierarchy[role.value] || 0;
+                                    return currentUserRoleLevel > targetRoleLevel;
+                                })
+                                .map(role => (
+                                    <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                                ))
+                            }
                         </SelectContent>
                     </Select>
                 </div>
