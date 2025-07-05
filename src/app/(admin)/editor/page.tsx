@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, Wand2, ImageIcon } from 'lucide-react';
 import { generateExcerpt } from '@/ai/flows/summarize-flow';
+import { generateTags } from '@/ai/flows/tag-generator-flow';
 import RichTextEditor from "@/components/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from '@/context/auth-context';
@@ -30,10 +32,11 @@ export default function EditorPage() {
     const [content, setContent] = useState('');
     const [excerpt, setExcerpt] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
-    const [tags, setTags] = useState('');
+    const [tags, setTags] = useState<string[]>([]);
     
-    // AI excerpt generation state
-    const [isGenerating, setIsGenerating] = useState(false);
+    // AI generation state
+    const [isGeneratingExcerpt, setIsGeneratingExcerpt] = useState(false);
+    const [isGeneratingTags, setIsGeneratingTags] = useState(false);
     const { toast } = useToast();
 
     // Featured image state
@@ -72,7 +75,7 @@ export default function EditorPage() {
             });
             return;
         }
-        setIsGenerating(true);
+        setIsGeneratingExcerpt(true);
         try {
             const result = await generateExcerpt({ articleContent: content });
             setExcerpt(result.excerpt);
@@ -85,7 +88,33 @@ export default function EditorPage() {
                 description: 'There was an error generating the excerpt. Please try again.',
             });
         } finally {
-            setIsGenerating(false);
+            setIsGeneratingExcerpt(false);
+        }
+    };
+
+    const handleGenerateTags = async () => {
+        if (!title.trim() || !content.trim()) {
+            toast({
+                variant: 'destructive',
+                title: 'Cannot generate tags',
+                description: 'Article title and content are required.',
+            });
+            return;
+        }
+        setIsGeneratingTags(true);
+        try {
+            const result = await generateTags({ articleTitle: title, articleContent: content });
+            setTags(result.tags);
+            toast({ title: 'Success', description: 'Tags generated successfully.' });
+        } catch (error) {
+            console.error("Error generating tags:", error);
+            toast({
+                variant: 'destructive',
+                title: 'AI Generation Failed',
+                description: 'There was an error generating tags. Please try again.',
+            });
+        } finally {
+            setIsGeneratingTags(false);
         }
     };
 
@@ -157,7 +186,7 @@ export default function EditorPage() {
                     excerpt,
                     featuredImage,
                     categoryId: selectedCategory,
-                    tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+                    tags: tags,
                     status,
                     authorId: user.uid,
                     authorName: user.displayName || user.email,
@@ -185,7 +214,7 @@ export default function EditorPage() {
                     <Input 
                         id="title" 
                         placeholder="Enter a catchy title..." 
-                        className="border-0 border-b border-input px-0 text-5xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+                        className="border-0 border-b border-input px-0 text-3xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         disabled={isSaving}
@@ -197,10 +226,10 @@ export default function EditorPage() {
                 <div className="space-y-4">
                     <h3 className="text-xl font-semibold font-headline">Publish</h3>
                     <div className="flex flex-col gap-4">
-                        <Button onClick={() => handleSave('Published')} disabled={isSaving || isUploading}>
+                        <Button onClick={() => handleSave('Published')} disabled={isSaving || isUploading || isGeneratingExcerpt || isGeneratingTags}>
                             {isSaving ? <><LoaderCircle className="animate-spin" /> Publishing...</> : 'Publish Article'}
                         </Button>
-                        <Button variant="outline" onClick={() => handleSave('Draft')} disabled={isSaving || isUploading}>
+                        <Button variant="outline" onClick={() => handleSave('Draft')} disabled={isSaving || isUploading || isGeneratingExcerpt || isGeneratingTags}>
                             {isSaving ? <><LoaderCircle className="animate-spin" /> Saving...</> : 'Save Draft'}
                         </Button>
                     </div>
@@ -259,14 +288,31 @@ export default function EditorPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="tags">Tags</Label>
-                            <Input 
-                                id="tags" 
-                                placeholder="AI, Machine Learning,..." 
-                                value={tags} 
-                                onChange={(e) => setTags(e.target.value)} 
-                                disabled={isSaving}
-                            />
+                            <div className="flex justify-between items-center">
+                                <Label htmlFor="tags">Tags</Label>
+                                <Button variant="outline" size="sm" onClick={handleGenerateTags} disabled={isGeneratingTags || isSaving}>
+                                    {isGeneratingTags ? (
+                                        <>
+                                            <LoaderCircle className="animate-spin" />
+                                            <span>Generating...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Wand2 />
+                                            <span>Generate with AI</span>
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2 min-h-[2.5rem] items-center">
+                                {tags.length > 0 ? (
+                                    tags.map((tag, index) => (
+                                        <Badge key={index} variant="secondary">{tag}</Badge>
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-muted-foreground px-1">Click the button to generate tags.</p>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -282,8 +328,8 @@ export default function EditorPage() {
                             rows={4}
                             disabled={isSaving}
                         />
-                        <Button variant="outline" size="sm" onClick={handleGenerateExcerpt} disabled={isGenerating || isSaving}>
-                             {isGenerating ? (
+                        <Button variant="outline" size="sm" onClick={handleGenerateExcerpt} disabled={isGeneratingExcerpt || isSaving}>
+                             {isGeneratingExcerpt ? (
                                 <>
                                     <LoaderCircle className="animate-spin" />
                                     <span>Generating...</span>
