@@ -115,7 +115,7 @@ export default function ContentPage() {
                 <CardTitle className="font-headline">Content</CardTitle>
                 <CardDescription>Manage your articles, pages, and other content.</CardDescription>
             </div>
-            <Link href="/editor">
+            <Link href="/editor?type=article">
                 <Button size="sm" className="gap-1">
                     <PlusCircle className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
@@ -172,7 +172,7 @@ export default function ContentPage() {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem asChild>
-                                    <Link href={`/editor?id=${item.id}`}>Edit</Link>
+                                    <Link href={`/editor?id=${item.id}&type=article`}>Edit</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
                                     <Link href={`/article/${item.id}`} target="_blank">View</Link>

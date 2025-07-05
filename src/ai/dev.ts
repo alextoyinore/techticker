@@ -3,3 +3,4 @@
 import './flows/summarize-flow';
 import './flows/tag-generator-flow';
 import './flows/widget-generator-flow';
+import './flows/page-structure-generator-flow';

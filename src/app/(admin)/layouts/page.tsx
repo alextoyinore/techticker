@@ -1,284 +1,332 @@
 'use client';
 
+import { useEffect, useState, useTransition } from "react";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
+import { generatePageStructure } from "@/ai/flows/page-structure-generator-flow";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GripVertical, Plus, PlusCircle, Trash2, LoaderCircle } from "lucide-react";
-import { useEffect, useState } from "react";
-import { collection, getDocs, query, where, limit, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
-
-interface Article {
-    id: string;
-    title: string;
-    excerpt: string;
-    featuredImage: string;
-    url: string;
-}
+import { Switch } from "@/components/ui/switch";
+import { MoreHorizontal, PlusCircle, Trash2, Wand2, LoaderCircle } from "lucide-react";
 
 interface Widget {
   id: string;
   name: string;
-  description: string;
-  html: string;
-  config: {
-      type: 'category' | 'tag';
-      value: string;
-      limit: number;
-  }
 }
 
-interface LayoutSection {
+interface Layout {
   id: string;
-  widget: Widget;
+  name: string;
+  structure: string;
+  widgetIds: string[];
+  isHomepage?: boolean;
 }
-
-function WidgetRenderer({ widget }: { widget: Widget }) {
-    const [articles, setArticles] = useState<Article[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchArticles = async () => {
-            setLoading(true);
-            try {
-                const articlesCollection = collection(db, "articles");
-                let articlesQuery;
-                const articleLimit = widget.config?.limit || 5;
-
-                // If there's a config and a specific value, filter by it
-                if (widget.config && widget.config.value) {
-                    if (widget.config.type === 'category') {
-                        articlesQuery = query(
-                            articlesCollection, 
-                            where("categoryId", "==", widget.config.value),
-                            where("status", "==", "Published"),
-                            orderBy("updatedAt", "desc"),
-                            limit(articleLimit)
-                        );
-                    } else { // 'tag'
-                        articlesQuery = query(
-                            articlesCollection, 
-                            where("tags", "array-contains", widget.config.value),
-                            where("status", "==", "Published"),
-                            orderBy("updatedAt", "desc"),
-                            limit(articleLimit)
-                        );
-                    }
-                } else { // Otherwise, fetch the latest articles
-                    articlesQuery = query(
-                        articlesCollection,
-                        where("status", "==", "Published"),
-                        orderBy("updatedAt", "desc"),
-                        limit(articleLimit)
-                    );
-                }
-
-                const querySnapshot = await getDocs(articlesQuery);
-                const articlesData = querySnapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        id: doc.id,
-                        title: data.title,
-                        excerpt: data.excerpt,
-                        featuredImage: data.featuredImage || 'https://placehold.co/600x400.png',
-                        url: `/article/${doc.id}`,
-                    }
-                }) as Article[];
-                setArticles(articlesData);
-
-            } catch (error) {
-                console.error(`Error fetching articles for widget ${widget.name}:`, error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchArticles();
-    }, [widget]);
-
-    const renderHtml = () => {
-        if (!widget.html || articles.length === 0) return { __html: '' };
-
-        const loopStartTag = '<!-- loop start -->';
-        const loopEndTag = '<!-- loop end -->';
-
-        const startIndex = widget.html.indexOf(loopStartTag);
-        const endIndex = widget.html.indexOf(loopEndTag);
-        
-        if (startIndex === -1 || endIndex === -1) {
-            return { __html: widget.html }; // No loop, render as is
-        }
-
-        const prefix = widget.html.substring(0, startIndex);
-        const suffix = widget.html.substring(endIndex + loopEndTag.length);
-        const template = widget.html.substring(startIndex + loopStartTag.length, endIndex);
-        
-        const content = articles.map(article => {
-            return template
-                .replace(/{{title}}/g, article.title)
-                .replace(/{{excerpt}}/g, article.excerpt)
-                .replace(/{{featuredImage}}/g, article.featuredImage)
-                .replace(/{{url}}/g, article.url);
-        }).join('');
-
-        return { __html: prefix + content + suffix };
-    };
-
-    if (loading) {
-        return (
-            <div className="relative w-full p-8 border-2 border-dashed rounded-lg group text-left">
-                <div className="flex items-center space-x-4">
-                    <LoaderCircle className="h-5 w-5 animate-spin" />
-                    <h3 className="font-semibold">{widget.name}</h3>
-                </div>
-                 <Skeleton className="h-24 w-full mt-4" />
-            </div>
-        )
-    }
-
-    if (articles.length === 0) {
-        return (
-             <div className="relative w-full p-8 border-2 border-dashed rounded-lg group text-left bg-muted/50">
-                <h3 className="font-semibold">{widget.name}</h3>
-                <p className="text-sm text-muted-foreground mt-2">No published articles found matching this widget's criteria.</p>
-            </div>
-        )
-    }
-
-    return <div dangerouslySetInnerHTML={renderHtml()} />;
-}
-
 
 export default function LayoutsPage() {
-  const [widgets, setWidgets] = useState<Widget[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-  const [layout, setLayout] = useState<LayoutSection[]>([]);
+    const { toast } = useToast();
+    const [layouts, setLayouts] = useState<Layout[]>([]);
+    const [widgets, setWidgets] = useState<Widget[]>([]);
+    const [loading, setLoading] = useState(true);
+    
+    // Dialog state
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isSaving, startSavingTransition] = useTransition();
+    const [editingLayout, setEditingLayout] = useState<Layout | null>(null);
 
-  useEffect(() => {
-    const fetchWidgets = async () => {
+    // Form state
+    const [layoutName, setLayoutName] = useState("");
+    const [layoutDescription, setLayoutDescription] = useState("");
+    const [layoutStructure, setLayoutStructure] = useState("");
+    const [selectedWidgetIds, setSelectedWidgetIds] = useState<string[]>([]);
+    
+    // AI state
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const fetchLayoutsAndWidgets = async () => {
         setLoading(true);
         try {
-            const widgetsCollection = collection(db, "widgets");
-            const querySnapshot = await getDocs(widgetsCollection);
-            const widgetsData = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })) as Widget[];
+            const layoutsSnapshot = await getDocs(collection(db, "layouts"));
+            const layoutsData = layoutsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Layout));
+            setLayouts(layoutsData);
+
+            const widgetsSnapshot = await getDocs(collection(db, "widgets"));
+            const widgetsData = widgetsSnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name } as Widget));
             setWidgets(widgetsData);
         } catch (error) {
-            console.error("Error fetching widgets:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch widgets.' });
+            console.error("Error fetching data:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch layouts or widgets.' });
         } finally {
             setLoading(false);
         }
     };
-    fetchWidgets();
-  }, [toast]);
 
-  const handleAddWidget = (widget: Widget) => {
-    const newSection: LayoutSection = {
-      id: `${widget.id}-${Date.now()}`,
-      widget: widget,
+    useEffect(() => {
+        fetchLayoutsAndWidgets();
+    }, []);
+
+    const resetForm = () => {
+        setEditingLayout(null);
+        setLayoutName("");
+        setLayoutDescription("");
+        setLayoutStructure("");
+        setSelectedWidgetIds([]);
     };
-    setLayout(prevLayout => [...prevLayout, newSection]);
-    toast({ title: 'Widget Added', description: `"${widget.name}" added to the layout.` });
-  };
 
-  const handleRemoveWidget = (sectionId: string) => {
-    setLayout(prevLayout => prevLayout.filter(section => section.id !== sectionId));
-    toast({ title: 'Widget Removed', description: 'The widget has been removed from the layout.' });
-  };
+    const handleDialogOpenChange = (open: boolean) => {
+        if (!open) resetForm();
+        setIsDialogOpen(open);
+    };
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-      <div className="md:col-span-1 flex flex-col gap-6">
+    const handleEditClick = (layout: Layout) => {
+        setEditingLayout(layout);
+        setLayoutName(layout.name);
+        setLayoutStructure(layout.structure);
+        setSelectedWidgetIds(layout.widgetIds || []);
+        setIsDialogOpen(true);
+    };
+
+    const handleGenerateStructure = async () => {
+        if (!layoutDescription.trim()) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please provide a description for the AI.' });
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            const result = await generatePageStructure({ description: layoutDescription });
+            setLayoutStructure(result.html);
+            toast({ title: 'Success', description: 'HTML structure generated by AI.' });
+        } catch (error) {
+            console.error("Error generating layout structure:", error);
+            toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate HTML.' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleSaveLayout = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!layoutName.trim() || !layoutStructure.trim()) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Layout Name and Structure are required.' });
+            return;
+        }
+
+        startSavingTransition(async () => {
+            const layoutData = {
+                name: layoutName,
+                structure: layoutStructure,
+                widgetIds: selectedWidgetIds,
+            };
+            try {
+                if (editingLayout) {
+                    const layoutRef = doc(db, 'layouts', editingLayout.id);
+                    await updateDoc(layoutRef, layoutData);
+                    toast({ title: 'Success', description: 'Layout updated successfully.' });
+                } else {
+                    await addDoc(collection(db, "layouts"), layoutData);
+                    toast({ title: 'Success', description: 'Layout created successfully.' });
+                }
+                resetForm();
+                setIsDialogOpen(false);
+                fetchLayoutsAndWidgets();
+            } catch (error) {
+                console.error("Error saving layout:", error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not save layout.' });
+            }
+        });
+    };
+
+    const handleDeleteLayout = async (layoutId: string) => {
+        try {
+            await deleteDoc(doc(db, "layouts", layoutId));
+            toast({ title: 'Success', description: 'Layout deleted.' });
+            setLayouts(layouts.filter(l => l.id !== layoutId));
+        } catch (error) {
+            console.error("Error deleting layout:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete layout.' });
+        }
+    };
+
+    const handleSetHomepage = async (layoutId: string) => {
+        const batch = writeBatch(db);
+        
+        layouts.forEach(layout => {
+            const layoutRef = doc(db, 'layouts', layout.id);
+            if (layout.id === layoutId) {
+                batch.update(layoutRef, { isHomepage: true });
+            } else if (layout.isHomepage) {
+                batch.update(layoutRef, { isHomepage: false });
+            }
+        });
+
+        try {
+            await batch.commit();
+            toast({ title: 'Success', description: 'Homepage layout updated.' });
+            fetchLayoutsAndWidgets();
+        } catch (error) {
+            console.error('Error setting homepage:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not set homepage layout.' });
+        }
+    };
+
+    return (
         <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">Layout Builder</CardTitle>
-            <CardDescription>Add widgets from the list to build your layout.</CardDescription>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Widgets</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {loading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 p-3">
-                        <Skeleton className="h-5 w-5" />
-                        <div className="flex-1 space-y-2">
-                           <Skeleton className="h-4 w-32" />
-                           <Skeleton className="h-3 w-48" />
-                        </div>
-                         <Skeleton className="h-9 w-20" />
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="font-headline">Layouts</CardTitle>
+                        <CardDescription>Manage reusable page layouts for your site.</CardDescription>
                     </div>
-                ))
-            ) : (
-                widgets.map((widget) => (
-                <div key={widget.id} className="flex items-center gap-4 p-3 border rounded-lg bg-secondary/50">
-                    <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
-                    <div className="flex-1">
-                    <h3 className="font-semibold">{widget.name}</h3>
-                    {widget.config && (
-                       <p className="text-sm text-muted-foreground capitalize">
-                            {widget.config.value ? `${widget.config.type}: ${widget.config.value}` : 'Latest Articles'}
-                        </p>
-                    )}
-                    </div>
-                     <Button size="sm" variant="outline" onClick={() => handleAddWidget(widget)}>
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Add
-                    </Button>
+                    <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
+                        <DialogTrigger asChild>
+                            <Button size="sm" className="gap-1">
+                                <PlusCircle className="h-3.5 w-3.5" />
+                                <span>Create Layout</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-4xl">
+                            <form onSubmit={handleSaveLayout}>
+                                <DialogHeader>
+                                    <DialogTitle>{editingLayout ? 'Edit Layout' : 'Create New Layout'}</DialogTitle>
+                                </DialogHeader>
+                                <ScrollArea className="h-[70vh] pr-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="name">Layout Name</Label>
+                                                <Input id="name" value={layoutName} onChange={(e) => setLayoutName(e.target.value)} placeholder="e.g., Homepage, Two-Column" required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="description">Describe the layout structure</Label>
+                                                <Textarea id="description" value={layoutDescription} onChange={(e) => setLayoutDescription(e.target.value)} placeholder="e.g., A main content area with a right sidebar for ads." />
+                                                <Button type="button" variant="outline" size="sm" onClick={handleGenerateStructure} disabled={isGenerating}>
+                                                    {isGenerating ? <><LoaderCircle className="animate-spin" /> Generating...</> : <><Wand2 className="mr-2 h-4 w-4" /> Generate with AI</>}
+                                                </Button>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="structure">Layout HTML Structure</Label>
+                                                <Textarea id="structure" value={layoutStructure} onChange={(e) => setLayoutStructure(e.target.value)} placeholder="AI-generated HTML will appear here. Must include {{{widgets}}} placeholder." rows={10} className="font-mono text-xs" required />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <Label>Assign Widgets to Layout</Label>
+                                            <Card className="max-h-full">
+                                                <CardContent className="p-4 space-y-2">
+                                                    {widgets.length > 0 ? widgets.map(widget => (
+                                                        <div key={widget.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-secondary">
+                                                            <Checkbox
+                                                                id={`widget-${widget.id}`}
+                                                                checked={selectedWidgetIds.includes(widget.id)}
+                                                                onCheckedChange={(checked) => {
+                                                                    setSelectedWidgetIds(prev => checked ? [...prev, widget.id] : prev.filter(id => id !== widget.id))
+                                                                }}
+                                                            />
+                                                            <Label htmlFor={`widget-${widget.id}`} className="font-normal flex-1 cursor-pointer">{widget.name}</Label>
+                                                        </div>
+                                                    )) : <p className="text-sm text-muted-foreground p-2">No widgets found.</p>}
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+                                    </div>
+                                </ScrollArea>
+                                <DialogFooter className="pt-4 border-t">
+                                    <Button type="button" variant="ghost" onClick={() => handleDialogOpenChange(false)}>Cancel</Button>
+                                    <Button type="submit" disabled={isSaving}>
+                                        {isSaving ? <><LoaderCircle className="animate-spin" /> Saving...</> : (editingLayout ? 'Save Changes' : 'Create Layout')}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
-                ))
-            )}
-            { !loading && widgets.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center p-4">No widgets created yet.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="md:col-span-2">
-        <Card className="min-h-[600px] flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle>Homepage Layout</CardTitle>
-                    <CardDescription>This is a preview of your homepage.</CardDescription>
-                </div>
-                <Button>Save Layout</Button>
             </CardHeader>
-          <CardContent className="flex-1 border-4 border-dashed rounded-lg m-6 p-6 flex flex-col items-center gap-4 text-center bg-background">
-             {layout.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                    <p>Your layout is empty.</p>
-                    <p className="text-sm">Add widgets from the left panel.</p>
-                </div>
-            ) : (
-                layout.map((section) => (
-                    <div key={section.id} className="relative w-full group text-left">
-                        <WidgetRenderer widget={section.widget} />
-                        <Button 
-                            variant="destructive" 
-                            size="icon" 
-                            className="absolute -top-4 -right-4 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                            onClick={() => handleRemoveWidget(section.id)}
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
-                ))
-            )}
-            <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mt-auto pt-4">
-                <Plus className="h-4 w-4" />
-                Add Section
-            </button>
-          </CardContent>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Widgets</TableHead>
+                            <TableHead>Homepage</TableHead>
+                            <TableHead><span className="sr-only">Actions</span></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            Array.from({ length: 3 }).map((_, i) => (
+                                <TableRow key={i}>
+                                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                                    <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                                    <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                                    <TableCell><MoreHorizontal className="h-4 w-4 text-muted-foreground" /></TableCell>
+                                </TableRow>
+                            ))
+                        ) : layouts.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                                    No layouts created yet.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            layouts.map((layout) => (
+                                <TableRow key={layout.id}>
+                                    <TableCell className="font-medium">{layout.name}</TableCell>
+                                    <TableCell>{layout.widgetIds?.length || 0}</TableCell>
+                                    <TableCell>
+                                        <Switch
+                                            checked={!!layout.isHomepage}
+                                            onCheckedChange={() => handleSetHomepage(layout.id)}
+                                            aria-label="Set as homepage"
+                                        />
+                                    </TableCell>
+                                    <TableCell>
+                                      <AlertDialog>
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                            <DropdownMenuItem onSelect={() => handleEditClick(layout)}>Edit</DropdownMenuItem>
+                                            <AlertDialogTrigger asChild>
+                                                <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                </DropdownMenuItem>
+                                            </AlertDialogTrigger>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>This will permanently delete the layout.</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteLayout(layout.id)} className="bg-destructive hover:bg-destructive/90">
+                                                    Yes, delete
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
         </Card>
-      </div>
-    </div>
-  )
+    );
 }
