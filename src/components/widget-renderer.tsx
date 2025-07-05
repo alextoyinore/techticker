@@ -8,7 +8,7 @@ export interface Article {
     featuredImage: string;
     url: string;
     authorName?: string;
-    updatedAt?: string;
+    createdAt?: string;
 }
 
 export interface Widget {
@@ -35,14 +35,14 @@ function parseAndRenderWidget(html: string, articles: Article[]): string {
         if (article.authorName) {
             finalTemplate = finalTemplate.replace(/\{\{authorName\}\}/g, article.authorName);
         }
-        if (article.updatedAt) {
-            const formattedDate = format(new Date(article.updatedAt), 'MMMM d, yyyy');
-            finalTemplate = finalTemplate.replace(/\{\{updatedAt\}\}/g, formattedDate);
+        if (article.createdAt) {
+            const formattedDate = format(new Date(article.createdAt), 'MMMM d, yyyy');
+            finalTemplate = finalTemplate.replace(/\{\{createdAt\}\}/g, formattedDate);
         }
         
         // Clean up any un-replaced placeholders
         finalTemplate = finalTemplate.replace(/\{\{authorName\}\}/g, '');
-        finalTemplate = finalTemplate.replace(/\{\{updatedAt\}\}/g, '');
+        finalTemplate = finalTemplate.replace(/\{\{createdAt\}\}/g, '');
 
         return finalTemplate;
     };

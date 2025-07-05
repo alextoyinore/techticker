@@ -56,7 +56,7 @@ async function getWidgetWithArticles(widgetId: string): Promise<{ widget: Widget
         }
     }
 
-    articlesQuery = articlesQuery.orderBy('updatedAt', 'desc').limit(config?.limit || 5);
+    articlesQuery = articlesQuery.orderBy('createdAt', 'desc').limit(config?.limit || 5);
     const articlesSnapshot = await articlesQuery.get();
     
     const articles = articlesSnapshot.docs.map(doc => {
@@ -68,7 +68,7 @@ async function getWidgetWithArticles(widgetId: string): Promise<{ widget: Widget
             featuredImage: data.featuredImage || 'https://placehold.co/600x400.png',
             url: `/article/${doc.id}`,
             authorName: data.authorName,
-            updatedAt: (data.updatedAt as Timestamp).toDate().toISOString(),
+            createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
         }
     });
 

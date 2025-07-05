@@ -12,7 +12,7 @@ export interface Article {
     id: string;
     title: string;
     authorName: string;
-    updatedAt: string; // Stored as ISO string
+    createdAt: string; // Stored as ISO string
     content: string;
     status: 'Published' | 'Draft';
     featuredImage?: string;
@@ -39,7 +39,7 @@ async function getArticleAndComments(articleId: string) {
         id: articleSnap.id,
         title: data.title,
         authorName: data.authorName,
-        updatedAt: (data.updatedAt as Timestamp).toDate().toISOString(),
+        createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
         content: data.content,
         status: data.status,
         featuredImage: data.featuredImage,

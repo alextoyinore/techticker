@@ -68,7 +68,7 @@ export default function ArticleView({ article, initialComments }: ArticleViewPro
             <div className="flex items-center gap-4 text-muted-foreground">
                 <span>By {article.authorName}</span>
                 <span>&bull;</span>
-                <span>{formatDate(article.updatedAt)}</span>
+                <span>{formatDate(article.createdAt)}</span>
             </div>
              {article.featuredImage && (
                 <div className="relative w-full aspect-video my-8">
