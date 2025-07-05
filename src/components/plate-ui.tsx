@@ -404,10 +404,14 @@ export const MarkToolbarButton = React.forwardRef<
   const state = useMarkToolbarButtonState({ clear, nodeType });
   const { props: buttonProps } = useMarkToolbarButton(state);
 
+  const { pressed, ...restButtonProps } = buttonProps;
+
   return (
     <Button
       ref={ref}
-      {...buttonProps}
+      aria-pressed={pressed}
+      data-state={pressed ? 'on' : 'off'}
+      {...restButtonProps}
       {...props}
     >
       {children}
