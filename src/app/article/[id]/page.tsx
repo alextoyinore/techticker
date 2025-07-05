@@ -239,7 +239,7 @@ export default function ArticlePage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
-                  <Link href="/">
+                  <Link href="/login">
                     <Button>Login</Button>
                   </Link>
                 )}
@@ -295,7 +295,7 @@ export default function ArticlePage() {
                             </form>
                         ) : (
                             <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-                                <p><Link href="/" className="text-primary underline">Log in</Link> to join the discussion.</p>
+                                <p><Link href="/login" className="text-primary underline">Log in</Link> to join the discussion.</p>
                             </div>
                         )}
                     </CardContent>

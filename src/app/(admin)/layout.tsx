@@ -67,11 +67,11 @@ export default function AdminLayout({
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      router.push("/");
+      router.push("/login");
     } else {
       const allowedRoles = ['admin', 'superadmin', 'editor', 'writer'];
       if (!user.role || !allowedRoles.includes(user.role)) {
-          router.push("/"); // Redirect non-admin users to a public page
+          router.push("/login"); // Redirect non-admin users to login page
       }
     }
   }, [user, loading, router]);
