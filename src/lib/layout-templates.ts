@@ -14,16 +14,16 @@ export const layoutTemplates: LayoutTemplate[] = [
   {
     id: 'classic-blog',
     name: 'Classic Blog',
-    description: 'A main content area with a sidebar on the right.',
+    description: 'A main content area with a narrower sidebar on the right.',
     preview: React.createElement(
         'div',
-        { className: "grid grid-cols-3 gap-2 h-full" },
-        React.createElement('div', { className: "col-span-2 bg-muted rounded-sm" }),
+        { className: "grid grid-cols-4 gap-2 h-full" },
+        React.createElement('div', { className: "col-span-3 bg-muted rounded-sm" }),
         React.createElement('div', { className: "col-span-1 bg-muted/50 rounded-sm" })
     ),
     html: `<div className="container mx-auto py-8 px-4">
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <main className="md:col-span-2 space-y-8">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <main className="md:col-span-3 space-y-8">
             {{{main}}}
         </main>
         <aside className="md:col-span-1 space-y-8">
@@ -40,7 +40,7 @@ export const layoutTemplates: LayoutTemplate[] = [
     preview: React.createElement(
         'div',
         { className: "flex flex-col gap-2 h-full" },
-        React.createElement('div', { className: "h-1/2 bg-muted rounded-sm" }),
+        React.createElement('div', { className: "h-1/3 bg-muted rounded-sm" }),
         React.createElement(
             'div',
             { className: "grid grid-cols-2 gap-2 flex-grow" },
@@ -62,6 +62,36 @@ export const layoutTemplates: LayoutTemplate[] = [
     </div>
 </div>`,
     zones: ['hero', 'left_column', 'right_column'],
+  },
+  {
+    id: 'magazine-homepage',
+    name: 'Magazine Homepage',
+    description: 'A dynamic hero section followed by a main content area and sidebar.',
+    preview: React.createElement(
+      'div',
+      { className: 'flex flex-col gap-2 h-full' },
+      React.createElement('div', { className: 'h-1/3 bg-muted rounded-sm' }),
+      React.createElement(
+        'div',
+        { className: 'grid grid-cols-3 gap-2 flex-grow' },
+        React.createElement('div', { className: 'col-span-2 bg-muted/50 rounded-sm' }),
+        React.createElement('div', { className: 'col-span-1 bg-muted/50 rounded-sm' })
+      )
+    ),
+    html: `<div className="container mx-auto py-8 px-4 space-y-8">
+    <section className="w-full">
+        {{{hero}}}
+    </section>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <main className="md:col-span-2 space-y-8">
+            {{{main_content}}}
+        </main>
+        <aside className="md:col-span-1 space-y-8">
+            {{{sidebar}}}
+        </aside>
+    </div>
+</div>`,
+    zones: ['hero', 'main_content', 'sidebar'],
   },
   {
     id: 'three-column',
@@ -88,6 +118,27 @@ export const layoutTemplates: LayoutTemplate[] = [
     </div>
 </div>`,
     zones: ['column_one', 'column_two', 'column_three'],
+  },
+  {
+    id: 'grid-showcase',
+    name: 'Grid Showcase',
+    description: 'A responsive grid for a dynamic showcase of content.',
+    preview: React.createElement(
+        'div',
+        { className: "grid grid-cols-3 grid-rows-2 gap-2 h-full" },
+        React.createElement('div', { className: "bg-muted/50 rounded-sm" }),
+        React.createElement('div', { className: "bg-muted/50 rounded-sm" }),
+        React.createElement('div', { className: "bg-muted/50 rounded-sm" }),
+        React.createElement('div', { className: "bg-muted/50 rounded-sm" }),
+        React.createElement('div', { className: "bg-muted/50 rounded-sm" }),
+        React.createElement('div', { className: "bg-muted/50 rounded-sm" })
+    ),
+    html: `<div className="container mx-auto py-8 px-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        {{{showcase}}}
+    </div>
+</div>`,
+    zones: ['showcase'],
   },
   {
     id: 'full-width',
