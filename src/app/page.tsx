@@ -1,11 +1,7 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
-import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
 import PublicHeader from '@/components/public-header';
 import PublicFooter from '@/components/public-footer';
-import WidgetRenderer from '@/components/widget-renderer';
+import WidgetRenderer, { type Article, type Widget } from '@/components/widget-renderer';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import ClassicBlogLayout from '@/components/layouts/classic-blog-layout';
@@ -28,62 +24,99 @@ interface Layout {
   id: string;
   templateId: string;
   zones: Record<string, string[]>;
-  isHomepage?: boolean;
 }
 
-export default function HomePage() {
-  const [homepageLayout, setHomepageLayout] = useState<Layout | null>(null);
-  const [loading, setLoading] = useState(true);
+async function getWidgetWithArticles(widgetId: string): Promise<{ widget: Widget; articles: Article[] }> {
+    const widgetRef = adminDb.collection('widgets').doc(widgetId);
+    const widgetDoc = await widgetRef.get();
+    
+    if (!widgetDoc.exists) {
+        throw new Error(`Widget with id ${widgetId} not found.`);
+    }
 
-  useEffect(() => {
-    const getHomepageLayout = async () => {
-      try {
-        const layoutsRef = collection(db, 'layouts');
-        const homepageQuery = query(layoutsRef, where('isHomepage', '==', true), limit(1));
-        const homepageSnapshot = await getDocs(homepageQuery);
+    const widget = { id: widgetDoc.id, ...widgetDoc.data() } as Widget;
+
+    const config = widget.config;
+    let articlesQuery: admin.firestore.Query = adminDb.collection('articles').where('status', '==', 'Published');
+
+    if (config && config.value) {
+        if (config.type === 'category') {
+             const categoriesRef = adminDb.collection('categories');
+             const categoryQuery = categoriesRef.where('name', '==', config.value).limit(1);
+             const categorySnapshot = await categoryQuery.get();
+             if (!categorySnapshot.empty) {
+                 const categoryId = categorySnapshot.docs[0].id;
+                 articlesQuery = articlesQuery.where('categoryId', '==', categoryId);
+             } else {
+                 return { widget, articles: [] }; // Category not found
+             }
+        } else if (config.type === 'tag') {
+            articlesQuery = articlesQuery.where('tags', 'array-contains', config.value);
+        }
+    }
+
+    articlesQuery = articlesQuery.orderBy('updatedAt', 'desc').limit(config?.limit || 5);
+    const articlesSnapshot = await articlesQuery.get();
+    
+    const articles = articlesSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            title: data.title,
+            excerpt: data.excerpt,
+            featuredImage: data.featuredImage || 'https://placehold.co/600x400.png',
+            url: `/article/${doc.id}`,
+        }
+    });
+
+    return { widget, articles };
+}
+
+
+async function getHomepageLayout() {
+    try {
+        const layoutsRef = adminDb.collection('layouts');
+        const homepageQuery = layoutsRef.where('isHomepage', '==', true).limit(1);
+        const homepageSnapshot = await homepageQuery.get();
 
         if (homepageSnapshot.empty) {
-          setHomepageLayout(null);
-        } else {
-          const doc = homepageSnapshot.docs[0];
-          setHomepageLayout({ id: doc.id, ...doc.data() } as Layout);
+            return null;
         }
-      } catch (error) {
+        
+        const doc = homepageSnapshot.docs[0];
+        const layoutData = { id: doc.id, ...doc.data() } as Layout;
+
+        const renderedZones: { [key: string]: React.ReactNode } = {};
+        const zones = layoutData.zones || {};
+
+        for (const zoneName in zones) {
+            const widgetIds = zones[zoneName] || [];
+            if (widgetIds.length > 0) {
+                const widgetDataPromises = widgetIds.map(getWidgetWithArticles);
+                const widgetsWithArticles = await Promise.all(widgetDataPromises);
+
+                renderedZones[zoneName] = (
+                    <div className="space-y-8">
+                        {widgetsWithArticles.map(({ widget, articles }) => (
+                            <WidgetRenderer key={widget.id} widget={widget} articles={articles} />
+                        ))}
+                    </div>
+                );
+            }
+        }
+
+        return { layout: layoutData, zones: renderedZones };
+    } catch (error) {
         console.error("Error fetching homepage layout:", error);
-        setHomepageLayout(null);
-      } finally {
-        setLoading(false);
-      }
-    };
+        return null;
+    }
+}
 
-    getHomepageLayout();
-  }, []);
-
-  const renderLoadingSkeleton = () => {
-    // Basic skeleton for a layout
-    return (
-      <div className="container mx-auto py-8 px-4 space-y-8">
-        <Skeleton className="h-64 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-4">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-          <div className="space-y-4">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        </div>
-      </div>
-    );
-  };
+export default async function HomePage() {
+  const data = await getHomepageLayout();
 
   const renderContent = () => {
-    if (loading) {
-      return renderLoadingSkeleton();
-    }
-  
-    if (!homepageLayout) {
+    if (!data) {
       return (
         <main className="flex-grow flex items-center justify-center">
           <div className="text-center">
@@ -94,26 +127,12 @@ export default function HomePage() {
       );
     }
   
-    const LayoutComponent = layoutComponents[homepageLayout.templateId] || FullWidthLayout;
-    const zones = homepageLayout.zones || {};
-    const renderedZones: { [key: string]: React.ReactNode } = {};
-  
-    for (const zoneName in zones) {
-      const widgetIds = zones[zoneName] as string[];
-      if (widgetIds && widgetIds.length > 0) {
-        renderedZones[zoneName] = (
-          <div className="space-y-8">
-            {widgetIds.map(widgetId => (
-              <WidgetRenderer key={widgetId} widgetId={widgetId} />
-            ))}
-          </div>
-        );
-      }
-    }
+    const { layout, zones } = data;
+    const LayoutComponent = layoutComponents[layout.templateId] || FullWidthLayout;
     
     return (
       <main className="flex-grow">
-        <LayoutComponent {...renderedZones} />
+        <LayoutComponent {...zones} />
       </main>
     )
   }
