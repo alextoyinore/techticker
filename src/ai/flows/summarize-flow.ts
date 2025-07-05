@@ -10,12 +10,12 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const GenerateExcerptInputSchema = z.object({
+const GenerateExcerptInputSchema = z.object({
   articleContent: z.string().describe('The full content of the article to be summarized.'),
 });
 export type GenerateExcerptInput = z.infer<typeof GenerateExcerptInputSchema>;
 
-export const GenerateExcerptOutputSchema = z.object({
+const GenerateExcerptOutputSchema = z.object({
   excerpt: z.string().describe('A concise, engaging summary of the article, 2-3 sentences long.'),
 });
 export type GenerateExcerptOutput = z.infer<typeof GenerateExcerptOutputSchema>;
