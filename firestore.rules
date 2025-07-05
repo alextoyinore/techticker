@@ -1,64 +1,76 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check for admin-level roles
-    function isCMSAdmin() {
-      return request.auth.token.role in ['superadmin', 'admin', 'editor', 'writer'];
+    // Helper functions
+    function isSuperAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    }
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
+    }
+    function isEditor() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['editor', 'admin', 'superadmin'];
+    }
+     function isWriter() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['writer', 'editor', 'admin', 'superadmin'];
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(resource) {
+      return request.auth.uid == resource.data.authorId;
     }
 
-    match /layouts/{layoutId} {
-      allow read, write: if isCMSAdmin();
-    }
+    // Collections
+    match /users/{userId} {
+      // A user can create, read, and update their own document.
+      allow create, read, update: if request.auth.uid == userId;
 
-    match /widgets/{widgetId} {
-        allow read, write: if isCMSAdmin();
+      // Admins and superadmins can list all users.
+      allow list: if isAdmin();
+      
+      // Superadmins can do anything to any user.
+      allow get, write: if isSuperAdmin();
     }
 
     match /articles/{articleId} {
-      // Admins can do anything
-      allow read, write: if isCMSAdmin();
-
-      // Public can only read published articles
-      allow get: if resource.data.status == 'Published';
+      allow read: if resource.data.status == 'Published' || isWriter();
+      allow create: if isWriter();
+      allow update, delete: if isOwner(resource) || isEditor();
     }
-
+    
     match /pages/{pageId} {
-      // Admins can read and write all pages
-      allow read, write: if isCMSAdmin();
-      
-      // Public can only read published pages
-      allow get: if resource.data.status == 'Published';
-    }
-
-    match /categories/{categoryId} {
-        allow read, write: if isCMSAdmin();
+      allow read: if resource.data.status == 'Published' || isWriter();
+      allow create: if isWriter();
+      allow update, delete: if isOwner(resource) || isEditor();
     }
 
     match /comments/{commentId} {
-        // Admins can read/write any comment
-        allow read, write: if isCMSAdmin();
-        
-        // Authenticated users can create comments
-        allow create: if request.auth != null;
-        
-        // Public can only read approved comments
-        allow list: if resource.data.status == 'Approved';
+      allow read: if resource.data.status == 'Approved' || isEditor();
+      allow create: if isSignedIn();
+      allow update: if isEditor();
+      allow delete: if isAdmin();
     }
 
-    match /users/{userId} {
-      // Admins can read all user docs
-      allow read: if isCMSAdmin();
-      
-      // Admins can write to any user doc, users can only write to their own
-      allow write: if isCMSAdmin() || request.auth.uid == userId;
+    match /categories/{categoryId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if isAdmin();
+    }
+
+    match /widgets/{widgetId} {
+        allow read, create, update, delete: if isEditor();
+    }
+
+    match /layouts/{layoutId} {
+        allow read, create, update, delete: if isEditor();
     }
     
     match /mail/{docId} {
-      // Only server-side admin SDK can create mail documents
-      allow read: if false;
-      allow write: if request.auth == null;
+      allow read: if false; // No one can read emails from the client
+      allow write: if isSuperAdmin(); // Only superadmins can trigger emails
     }
   }
 }
