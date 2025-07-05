@@ -11,8 +11,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Source Sans 3', 'sans-serif'],
-        headline: ['Poppins', 'sans-serif'],
+        body: ['Roboto', 'sans-serif'],
+        headline: ['Merriweather', 'serif'],
         code: ['monospace'],
       },
       colors: {
