@@ -2,23 +2,146 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GripVertical, Plus, PlusCircle, Trash2 } from "lucide-react";
+import { GripVertical, Plus, PlusCircle, Trash2, LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+
+interface Article {
+    id: string;
+    title: string;
+    excerpt: string;
+    featuredImage: string;
+    url: string;
+}
 
 interface Widget {
   id: string;
   name: string;
   description: string;
+  html: string;
+  config: {
+      type: 'category' | 'tag';
+      value: string;
+      limit: number;
+  }
 }
 
 interface LayoutSection {
   id: string;
   widget: Widget;
 }
+
+function WidgetRenderer({ widget }: { widget: Widget }) {
+    const [articles, setArticles] = useState<Article[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchArticles = async () => {
+            if (!widget.config) {
+                setLoading(false);
+                return;
+            }
+            setLoading(true);
+            try {
+                const articlesCollection = collection(db, "articles");
+                let articlesQuery;
+
+                if (widget.config.type === 'category') {
+                    articlesQuery = query(
+                        articlesCollection, 
+                        where("categoryId", "==", widget.config.value),
+                        where("status", "==", "Published"),
+                        orderBy("updatedAt", "desc"),
+                        limit(widget.config.limit || 5)
+                    );
+                } else { // 'tag'
+                    articlesQuery = query(
+                        articlesCollection, 
+                        where("tags", "array-contains", widget.config.value),
+                        where("status", "==", "Published"),
+                        orderBy("updatedAt", "desc"),
+                        limit(widget.config.limit || 5)
+                    );
+                }
+
+                const querySnapshot = await getDocs(articlesQuery);
+                const articlesData = querySnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        title: data.title,
+                        excerpt: data.excerpt,
+                        featuredImage: data.featuredImage || 'https://placehold.co/600x400.png',
+                        url: `/article/${doc.id}`,
+                    }
+                }) as Article[];
+                setArticles(articlesData);
+
+            } catch (error) {
+                console.error(`Error fetching articles for widget ${widget.name}:`, error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchArticles();
+    }, [widget]);
+
+    const renderHtml = () => {
+        if (!widget.html || articles.length === 0) return { __html: '' };
+
+        const loopStartTag = '<!-- loop start -->';
+        const loopEndTag = '<!-- loop end -->';
+
+        const startIndex = widget.html.indexOf(loopStartTag);
+        const endIndex = widget.html.indexOf(loopEndTag);
+        
+        if (startIndex === -1 || endIndex === -1) {
+            return { __html: widget.html }; // No loop, render as is
+        }
+
+        const prefix = widget.html.substring(0, startIndex);
+        const suffix = widget.html.substring(endIndex + loopEndTag.length);
+        const template = widget.html.substring(startIndex + loopStartTag.length, endIndex);
+        
+        const content = articles.map(article => {
+            return template
+                .replace(/{{title}}/g, article.title)
+                .replace(/{{excerpt}}/g, article.excerpt)
+                .replace(/{{featuredImage}}/g, article.featuredImage)
+                .replace(/{{url}}/g, article.url);
+        }).join('');
+
+        return { __html: prefix + content + suffix };
+    };
+
+    if (loading) {
+        return (
+            <div className="relative w-full p-8 border-2 border-dashed rounded-lg group text-left">
+                <div className="flex items-center space-x-4">
+                    <LoaderCircle className="h-5 w-5 animate-spin" />
+                    <h3 className="font-semibold">{widget.name}</h3>
+                </div>
+                 <Skeleton className="h-24 w-full mt-4" />
+            </div>
+        )
+    }
+
+    if (articles.length === 0) {
+        return (
+             <div className="relative w-full p-8 border-2 border-dashed rounded-lg group text-left bg-muted/50">
+                <h3 className="font-semibold">{widget.name}</h3>
+                <p className="text-sm text-muted-foreground mt-2">No published articles found matching this widget's criteria.</p>
+            </div>
+        )
+    }
+
+    return <div dangerouslySetInnerHTML={renderHtml()} />;
+}
+
 
 export default function LayoutsPage() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -92,7 +215,7 @@ export default function LayoutsPage() {
                     <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
                     <div className="flex-1">
                     <h3 className="font-semibold">{widget.name}</h3>
-                    <p className="text-sm text-muted-foreground">{widget.description}</p>
+                    <p className="text-sm text-muted-foreground capitalize">{widget.config.type}: {widget.config.value}</p>
                     </div>
                      <Button size="sm" variant="outline" onClick={() => handleAddWidget(widget)}>
                         <PlusCircle className="h-4 w-4 mr-2" />
@@ -125,13 +248,12 @@ export default function LayoutsPage() {
                 </div>
             ) : (
                 layout.map((section) => (
-                    <div key={section.id} className="relative w-full p-8 border-2 border-dashed rounded-lg group text-left">
-                        <h3 className="font-semibold">{section.widget.name}</h3>
-                        <p className="text-sm text-muted-foreground">{section.widget.description}</p>
+                    <div key={section.id} className="relative w-full group text-left">
+                        <WidgetRenderer widget={section.widget} />
                         <Button 
                             variant="destructive" 
                             size="icon" 
-                            className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute -top-4 -right-4 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                             onClick={() => handleRemoveWidget(section.id)}
                         >
                             <Trash2 className="h-4 w-4" />
