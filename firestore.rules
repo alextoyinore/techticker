@@ -2,53 +2,51 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is an admin or editor
-    function isAdmin() {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'editor'];
-    }
-
-    // Helper function to check if a user is a content creator
-    function isWriter() {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'editor', 'writer'];
-    }
-
-    // Default security rule: Deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Users can read/update their own document and create it on signup
+    
+    // Users: Can read/update their own data. Admins can read anyone's data.
+    // Everyone can create their own user doc on signup.
     match /users/{userId} {
       allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Admin/Superadmin access
+      allow write, get: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
     }
 
-    // Articles can be read by the public if published.
-    // All articles can be read, created, and modified by writers/admins.
+    // Articles:
+    // Anyone can read published articles.
+    // Admins, editors, writers can create/update articles.
+    // Admins can delete any article.
     match /articles/{articleId} {
-      allow read: if resource.data.status == 'Published' || isWriter();
-      allow create, update, delete: if isWriter();
+      allow read: if resource.data.status == 'Published' || (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'editor', 'writer']);
+      allow create, update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'editor', 'writer'];
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
+    }
+
+    // Comments:
+    // Anyone can read approved comments.
+    // Authenticated users can create pending comments.
+    // Admins/editors can update comment status (approve/reject/etc).
+    match /comments/{commentId} {
+      allow read: if resource.data.status == 'Approved';
+      allow create: if request.auth != null && request.resource.data.status == 'Pending';
+      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'editor'];
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
     }
     
-    // Categories and Widgets can be read by anyone, but only managed by admins.
+    // Categories:
+    // Anyone can read categories.
+    // Admins/editors can create/delete categories.
     match /categories/{categoryId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'editor'];
     }
-
+    
+    // Widgets:
+    // Anyone can read widgets.
+    // Admins/editors can create/delete widgets.
     match /widgets/{widgetId} {
         allow read: if true;
-        allow write: if isAdmin();
-    }
-
-    // Comments can be created by any authenticated user.
-    // They can be read by the public if approved.
-    // Admins can read all comments and moderate them.
-    match /comments/{commentId} {
-      allow read: if resource.data.status == 'Approved' || isAdmin();
-      allow create: if request.auth != null;
-      allow update, delete: if isAdmin();
+        allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'editor'];
     }
   }
 }
