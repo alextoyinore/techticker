@@ -1,7 +1,9 @@
+
 "use client"
 
-import { getBlockAbove, Plate, useEditorRef, Editable } from "@udecode/plate-common";
+import { getBlockAbove, Plate, useEditorRef } from "@udecode/plate-common";
 import { setNodes } from 'slate';
+import { Editable } from "slate-react";
 import {
   MARK_BOLD,
   MARK_CODE,
@@ -52,7 +54,7 @@ const EditorContent = () => {
         const block = getBlockAbove(editor, {
             match: { type: [format, ELEMENT_PARAGRAPH] },
         });
-        const isActive = block && block[0].type === format;
+        const isActive = !!block && block[0].type === format;
 
         setNodes(editor, {
             type: isActive ? ELEMENT_PARAGRAPH : format,
