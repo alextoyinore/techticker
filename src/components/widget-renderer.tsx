@@ -20,33 +20,36 @@ export interface Widget {
 }
 
 function parseAndRenderWidget(html: string, articles: Article[]): string {
-    const loopStartTag = '<!-- loop start -->';
-    const loopEndTag = '<!-- loop end -->';
+    let renderedHtml = html;
 
-    const loopStartIndex = html.indexOf(loopStartTag);
-    const loopEndIndex = html.indexOf(loopEndTag);
+    const renderTemplate = (template: string, article: Article) => {
+        return template
+            .replace(/\{\{title\}\}/g, article.title || '')
+            .replace(/\{\{excerpt\}\}/g, article.excerpt || '')
+            .replace(/\{\{featuredImage\}\}/g, article.featuredImage || 'https://placehold.co/600x400.png')
+            .replace(/\{\{url\}\}/g, article.url || '');
+    };
 
-    if (loopStartIndex === -1 || loopEndIndex === -1) {
-        if (articles.length > 0) {
-            console.warn(`Widget '${name}' is missing loop tags but has articles to display.`);
-        }
-        return html;
-    }
-    
-    const beforeLoop = html.substring(0, loopStartIndex);
-    const afterLoop = html.substring(loopEndIndex + loopEndTag.length);
-    const loopContentTemplate = html.substring(loopStartIndex + loopStartTag.length, loopEndIndex);
+    // Handle loop-first
+    renderedHtml = renderedHtml.replace(/<!-- loop-first start -->(.*?)<!-- loop-first end -->/gs, (_, template) => {
+        if (articles.length === 0) return '';
+        const article = articles[0];
+        return renderTemplate(template, article);
+    });
 
-    const renderedItems = articles.map(article => {
-        let itemHtml = loopContentTemplate;
-        itemHtml = itemHtml.replace(/\{\{title\}\}/g, article.title || '');
-        itemHtml = itemHtml.replace(/\{\{excerpt\}\}/g, article.excerpt || '');
-        itemHtml = itemHtml.replace(/\{\{featuredImage\}\}/g, article.featuredImage || 'https://placehold.co/600x400.png');
-        itemHtml = itemHtml.replace(/\{\{url\}\}/g, article.url || '');
-        return itemHtml;
-    }).join('');
+    // Handle loop-rest
+    renderedHtml = renderedHtml.replace(/<!-- loop-rest start -->(.*?)<!-- loop-rest end -->/gs, (_, template) => {
+        if (articles.length <= 1) return '';
+        return articles.slice(1).map(article => renderTemplate(template, article)).join('');
+    });
 
-    return beforeLoop + renderedItems + afterLoop;
+    // Handle standard loop
+    renderedHtml = renderedHtml.replace(/<!-- loop start -->(.*?)<!-- loop end -->/gs, (_, template) => {
+        if (articles.length === 0) return '';
+        return articles.map(article => renderTemplate(template, article)).join('');
+    });
+
+    return renderedHtml;
 }
 
 
