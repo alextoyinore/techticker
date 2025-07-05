@@ -167,37 +167,59 @@ export default function EditorPage() {
         
         startSavingTransition(async () => {
             const collectionName = docType === 'page' ? 'pages' : 'articles';
-            const commonData = {
-                title,
-                content,
-                status: newStatus,
-                authorId: user.uid,
-                authorName: user.displayName || user.email,
-                updatedAt: serverTimestamp(),
-            };
-
-            let docData: any;
-            if (docType === 'page') {
-                if (!slug.trim()) {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Slug is required for pages.' });
-                    return;
-                }
-                if (!selectedLayoutId) {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Layout is required for pages.' });
-                    return;
-                }
-                docData = { ...commonData, slug, layoutId: selectedLayoutId };
-            } else {
-                docData = { ...commonData, excerpt, featuredImage, categoryId: selectedCategory || '', tags: tags || [] };
-            }
 
             try {
                 if (docId) {
+                    // UPDATE: Only update content fields, preserve original author and createdAt
                     const docRef = doc(db, collectionName, docId);
-                    await updateDoc(docRef, docData);
+                    const dataToUpdate: any = {
+                        title,
+                        content,
+                        status: newStatus,
+                        updatedAt: serverTimestamp(),
+                    };
+
+                    if (docType === 'page') {
+                        if (!slug.trim() || !selectedLayoutId) {
+                            toast({ variant: 'destructive', title: 'Error', description: 'Slug and Layout are required.' });
+                            return;
+                        }
+                        dataToUpdate.slug = slug;
+                        dataToUpdate.layoutId = selectedLayoutId;
+                    } else {
+                        dataToUpdate.excerpt = excerpt;
+                        dataToUpdate.featuredImage = featuredImage;
+                        dataToUpdate.categoryId = selectedCategory || '';
+                        dataToUpdate.tags = tags || [];
+                    }
+                    await updateDoc(docRef, dataToUpdate);
+
                 } else {
-                    docData.createdAt = serverTimestamp();
-                    await addDoc(collection(db, collectionName), docData);
+                    // CREATE: Set all fields, including author and createdAt
+                    const dataToCreate: any = {
+                        title,
+                        content,
+                        status: newStatus,
+                        authorId: user.uid,
+                        authorName: user.displayName || user.email,
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp(),
+                    };
+
+                    if (docType === 'page') {
+                         if (!slug.trim() || !selectedLayoutId) {
+                            toast({ variant: 'destructive', title: 'Error', description: 'Slug and Layout are required.' });
+                            return;
+                        }
+                        dataToCreate.slug = slug;
+                        dataToCreate.layoutId = selectedLayoutId;
+                    } else {
+                        dataToCreate.excerpt = excerpt;
+                        dataToCreate.featuredImage = featuredImage;
+                        dataToCreate.categoryId = selectedCategory || '';
+                        dataToCreate.tags = tags || [];
+                    }
+                    await addDoc(collection(db, collectionName), dataToCreate);
                 }
 
                 toast({ title: 'Success', description: `${docType === 'page' ? 'Page' : 'Article'} saved as ${newStatus}.` });

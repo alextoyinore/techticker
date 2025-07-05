@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { AlertCircle } from 'lucide-react';
 
 interface Article {
     id: string;
@@ -93,19 +93,49 @@ function parseAndRenderWidget(html: string, articles: Article[]): string {
 
 
 export default async function WidgetRenderer({ widgetId }: { widgetId: string }) {
-    const widget = await getWidget(widgetId);
+    try {
+        const widget = await getWidget(widgetId);
 
-    if (!widget || !widget.html) {
+        if (!widget || !widget.html) {
+            return (
+                <div className="p-4 border border-dashed rounded-md text-muted-foreground">
+                    <p>Widget not found or has no HTML content.</p>
+                    <p className="text-xs">ID: {widgetId}</p>
+                </div>
+            );
+        }
+        
+        const articles = await getArticles(widget.config);
+        const renderedHtml = parseAndRenderWidget(widget.html, articles);
+
+        return <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />;
+    } catch (error: any) {
+        // Check for Firestore index error
+        const isIndexError = error.code === 'FAILED_PRECONDITION' || (error.message && (error.message.includes('requires an index') || error.message.includes('needs an index')));
+        if (isIndexError) {
+             return (
+                <div className="p-4 border border-destructive/50 rounded-md text-destructive bg-destructive/10 flex items-start gap-4">
+                    <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0"/>
+                    <div>
+                        <p className="font-bold">Database Index Required</p>
+                        <p className="text-sm">This widget requires a database index that has not been created yet. Please go to the Firebase console to create it.</p>
+                        <p className="text-xs mt-2 text-destructive/70">Widget ID: {widgetId}</p>
+                    </div>
+                </div>
+            );
+        }
+
+        // Generic error for other issues
+        console.error(`Error rendering widget ${widgetId}:`, error);
         return (
-            <div className="p-4 border border-dashed rounded-md text-muted-foreground">
-                <p>Widget not found or has no HTML content.</p>
-                <p className="text-xs">ID: {widgetId}</p>
+            <div className="p-4 border border-dashed rounded-md text-muted-foreground flex items-start gap-4">
+                <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0"/>
+                 <div>
+                    <p className="font-bold">Widget Failed to Render</p>
+                    <p className="text-sm">An unexpected error occurred.</p>
+                    <p className="text-xs mt-2">ID: {widgetId}</p>
+                </div>
             </div>
         );
     }
-    
-    const articles = await getArticles(widget.config);
-    const renderedHtml = parseAndRenderWidget(widget.html, articles);
-
-    return <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />;
 }
