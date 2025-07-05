@@ -80,8 +80,8 @@ export default function EditorPage() {
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 flex flex-col gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="lg:col-span-2 flex flex-col gap-4 h-full">
                  <div>
                     <Label htmlFor="title" className="text-sm text-muted-foreground">Article Title</Label>
                     <Input 
@@ -102,7 +102,7 @@ export default function EditorPage() {
                 </div>
                  <div className="space-y-4">
                     <h3 className="text-xl font-semibold font-headline">Featured Image</h3>
-                    <div className="relative aspect-video w-full rounded-md border-2 border-dashed flex items-center justify-center bg-muted/50 hover:border-primary transition-colors">
+                    <div className="relative aspect-[2/1] w-full rounded-md border-2 border-dashed flex items-center justify-center bg-muted/50 hover:border-primary transition-colors">
                         {featuredImage ? (
                             <img src={featuredImage} alt="Featured Image Preview" className="absolute inset-0 h-full w-full object-cover rounded-md" />
                         ) : (
@@ -135,7 +135,6 @@ export default function EditorPage() {
                 </div>
                  <div className="space-y-4">
                     <h3 className="text-xl font-semibold font-headline">Details</h3>
-                    <p className="text-sm text-muted-foreground">Configure categories and tags.</p>
                     <div className="space-y-4 pt-2">
                         <div className="space-y-2">
                             <Label htmlFor="category">Category</Label>
