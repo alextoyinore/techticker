@@ -1,4 +1,3 @@
-
 'use client';
 
 import { MoreHorizontal, PlusCircle, Trash2, Wand2, LoaderCircle } from "lucide-react";
@@ -62,7 +61,7 @@ interface Widget {
     name: string;
     description: string;
     html: string;
-    config: {
+    config?: {
         type: 'category' | 'tag';
         value: string;
         limit: number;
@@ -155,9 +154,9 @@ export default function WidgetsPage() {
         setWidgetName(widget.name);
         setWidgetDescription(widget.description);
         setWidgetHtml(widget.html);
-        setWidgetConfigType(widget.config.type);
-        setWidgetConfigValue(widget.config.value);
-        setWidgetConfigLimit(widget.config.limit);
+        setWidgetConfigType(widget.config?.type || 'category');
+        setWidgetConfigValue(widget.config?.value || '');
+        setWidgetConfigLimit(widget.config?.limit || 5);
         setIsDialogOpen(true);
     };
 
@@ -345,7 +344,9 @@ export default function WidgetsPage() {
                 widgets.map((widget) => (
                 <TableRow key={widget.id}>
                     <TableCell className="font-medium">{widget.name}</TableCell>
-                    <TableCell className="text-muted-foreground capitalize">{widget.config?.type}: {widget.config?.value}</TableCell>
+                    <TableCell className="text-muted-foreground capitalize">
+                        {widget.config ? `${widget.config.type}: ${widget.config.value}` : 'N/A'}
+                    </TableCell>
                     <TableCell>
                       <AlertDialog>
                         <DropdownMenu>
