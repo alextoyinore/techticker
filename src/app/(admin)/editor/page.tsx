@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, Wand2, ImageIcon } from 'lucide-react';
 import { generateExcerpt } from '@/ai/flows/summarize-flow';
@@ -10,6 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from '@/components/ui/textarea';
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+interface Category {
+    id: string;
+    name: string;
+}
 
 export default function EditorPage() {
     const [content, setContent] = useState('');
@@ -21,6 +28,28 @@ export default function EditorPage() {
     const [featuredImage, setFeaturedImage] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // New state for categories
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            setLoadingCategories(true);
+            try {
+                const querySnapshot = await getDocs(collection(db, "categories"));
+                const cats = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+                setCategories(cats);
+            } catch (error) {
+                console.error("Error fetching categories:", error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch categories.' });
+            } finally {
+                setLoadingCategories(false);
+            }
+        };
+        fetchCategories();
+    }, [toast]);
+
 
     const handleGenerateExcerpt = async () => {
         if (!content.trim()) {
@@ -138,14 +167,14 @@ export default function EditorPage() {
                     <div className="space-y-4 pt-2">
                         <div className="space-y-2">
                             <Label htmlFor="category">Category</Label>
-                            <Select>
+                            <Select disabled={loadingCategories}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select a category" />
+                                    <SelectValue placeholder={loadingCategories ? "Loading..." : "Select a category"} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="technology">Technology</SelectItem>
-                                    <SelectItem value="science">Science</SelectItem>
-                                    <SelectItem value="ai">AI</SelectItem>
+                                    {categories.map((cat) => (
+                                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
