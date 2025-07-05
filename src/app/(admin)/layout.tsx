@@ -3,16 +3,19 @@
 import Link from "next/link";
 import {
   Bell,
+  CircleUser,
   FileText,
+  Globe,
   LayoutGrid,
   LayoutPanelLeft,
+  LoaderCircle,
+  LogOut,
   MessageSquare,
   PenSquare,
   Puzzle,
   Search,
   Settings,
   Users,
-  LoaderCircle,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
@@ -227,17 +230,27 @@ export default function AdminLayout({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/profile">Profile</Link>
+                <Link href="/profile">
+                  <CircleUser className="h-4 w-4" />
+                  <span>Profile</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard">Dashboard</Link>
+                <Link href="/dashboard">
+                  <LayoutGrid className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/article">View Site</Link>
+                <Link href="/article">
+                  <Globe className="h-4 w-4" />
+                  <span>View Site</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
-                Logout
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
