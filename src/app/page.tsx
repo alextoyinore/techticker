@@ -3,6 +3,7 @@ import PublicHeader from '@/components/public-header';
 import PublicFooter from '@/components/public-footer';
 import WidgetRenderer, { type Article, type Widget } from '@/components/widget-renderer';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Timestamp } from 'firebase-admin/firestore';
 
 import ClassicBlogLayout from '@/components/layouts/classic-blog-layout';
 import FeaturedArticleLayout from '@/components/layouts/featured-article-layout';
@@ -66,6 +67,8 @@ async function getWidgetWithArticles(widgetId: string): Promise<{ widget: Widget
             excerpt: data.excerpt,
             featuredImage: data.featuredImage || 'https://placehold.co/600x400.png',
             url: `/article/${doc.id}`,
+            authorName: data.authorName,
+            updatedAt: (data.updatedAt as Timestamp).toDate().toISOString(),
         }
     });
 

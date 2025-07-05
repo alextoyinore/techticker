@@ -53,6 +53,7 @@ export const widgetTemplates: WidgetTemplate[] = [
         <div class="flex-grow">
             <h3 class="font-semibold text-lg group-hover:text-primary">{{title}}</h3>
             <p class="text-sm text-muted-foreground line-clamp-2">{{excerpt}}</p>
+            <p class="text-xs text-muted-foreground mt-1">{{authorName}} &bull; {{updatedAt}}</p>
         </div>
     </a>
     <!-- loop end -->
@@ -112,6 +113,7 @@ export const widgetTemplates: WidgetTemplate[] = [
         <div class="mt-4">
             <h2 class="text-2xl font-bold group-hover:text-primary">{{title}}</h2>
             <p class="text-muted-foreground mt-2 line-clamp-3">{{excerpt}}</p>
+            <p class="text-sm text-muted-foreground mt-2">{{authorName}} &bull; {{updatedAt}}</p>
         </div>
     </a>
     <!-- loop end -->

@@ -1,4 +1,5 @@
 import { AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
 
 export interface Article {
     id: string;
@@ -6,6 +7,8 @@ export interface Article {
     excerpt: string;
     featuredImage: string;
     url: string;
+    authorName?: string;
+    updatedAt?: string;
 }
 
 export interface Widget {
@@ -23,11 +26,25 @@ function parseAndRenderWidget(html: string, articles: Article[]): string {
     let renderedHtml = html;
 
     const renderTemplate = (template: string, article: Article) => {
-        return template
+        let finalTemplate = template
             .replace(/\{\{title\}\}/g, article.title || '')
             .replace(/\{\{excerpt\}\}/g, article.excerpt || '')
             .replace(/\{\{featuredImage\}\}/g, article.featuredImage || 'https://placehold.co/600x400.png')
             .replace(/\{\{url\}\}/g, article.url || '');
+        
+        if (article.authorName) {
+            finalTemplate = finalTemplate.replace(/\{\{authorName\}\}/g, article.authorName);
+        }
+        if (article.updatedAt) {
+            const formattedDate = format(new Date(article.updatedAt), 'MMMM d, yyyy');
+            finalTemplate = finalTemplate.replace(/\{\{updatedAt\}\}/g, formattedDate);
+        }
+        
+        // Clean up any un-replaced placeholders
+        finalTemplate = finalTemplate.replace(/\{\{authorName\}\}/g, '');
+        finalTemplate = finalTemplate.replace(/\{\{updatedAt\}\}/g, '');
+
+        return finalTemplate;
     };
 
     // Handle loop-first
