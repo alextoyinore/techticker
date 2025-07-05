@@ -83,7 +83,7 @@ export default function AdminLayout({
   return (
     <SidebarProvider>
       <Sidebar>
-        <SidebarHeader className="px-4">
+        <SidebarHeader className="px-4 mb-4">
           <h1 className="text-xl font-bold font-headline text-sidebar-foreground">
             TechTicker
           </h1>
@@ -95,6 +95,7 @@ export default function AdminLayout({
                   asChild
                   isActive={isActive("/dashboard")}
                   tooltip="Dashboard"
+                  className="h-10"
                 >
                   <Link href="/dashboard">
                     <LayoutGrid />
@@ -107,6 +108,7 @@ export default function AdminLayout({
                   asChild
                   isActive={isActive("/content")}
                   tooltip="Content"
+                  className="h-10"
                 >
                   <Link href="/content">
                     <LayoutList />
@@ -119,6 +121,7 @@ export default function AdminLayout({
                   asChild
                   isActive={isActive("/pages")}
                   tooltip="Pages"
+                  className="h-10"
                 >
                   <Link href="/pages">
                     <FileText />
@@ -131,6 +134,7 @@ export default function AdminLayout({
                   asChild
                   isActive={isActive("/layouts")}
                   tooltip="Layouts"
+                  className="h-10"
                 >
                   <Link href="/layouts">
                     <LayoutPanelLeft />
@@ -143,6 +147,7 @@ export default function AdminLayout({
                   asChild
                   isActive={isActive("/widgets")}
                   tooltip="Widgets"
+                  className="h-10"
                 >
                   <Link href="/widgets">
                     <Puzzle />
@@ -155,6 +160,7 @@ export default function AdminLayout({
                   asChild
                   isActive={isActive("/comments")}
                   tooltip="Comments"
+                  className="h-10"
                 >
                   <Link href="/comments">
                     <MessageSquare />
@@ -163,7 +169,7 @@ export default function AdminLayout({
                 </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/users")} tooltip="Users">
+                <SidebarMenuButton asChild isActive={isActive("/users")} tooltip="Users" className="h-10">
                   <Link href="/users">
                     <Users />
                     <span>Users</span>
@@ -175,6 +181,7 @@ export default function AdminLayout({
                   asChild
                   isActive={isActive("/editor")}
                   tooltip="Editor"
+                  className="h-10"
                 >
                   <Link href="/editor">
                     <PenSquare />
@@ -191,6 +198,7 @@ export default function AdminLayout({
                   asChild
                   isActive={isActive("/settings")}
                   tooltip="Settings"
+                  className="h-10"
                 >
                   <Link href="/settings">
                     <Settings />
