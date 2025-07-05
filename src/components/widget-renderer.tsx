@@ -1,5 +1,10 @@
-import { adminDb } from '@/lib/firebase-admin';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, limit, doc, getDoc, orderBy } from 'firebase/firestore';
 import { AlertCircle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Article {
     id: string;
@@ -20,49 +25,6 @@ interface Widget {
     }
 }
 
-async function getWidget(widgetId: string): Promise<Widget | null> {
-    const doc = await adminDb.collection('widgets').doc(widgetId).get();
-    if (!doc.exists) return null;
-    return { id: doc.id, ...doc.data() } as Widget;
-}
-
-async function getArticles(config: Widget['config']): Promise<Article[]> {
-    let articlesQuery = adminDb.collection('articles').where('status', '==', 'Published');
-
-    if (config && config.value) {
-        if (config.type === 'category') {
-            // We need to fetch the category ID from the category name first.
-            // This assumes category names are unique.
-            const categoriesRef = adminDb.collection('categories');
-            const categoryQuery = categoriesRef.where('name', '==', config.value).limit(1);
-            const categorySnapshot = await categoryQuery.get();
-            if (!categorySnapshot.empty) {
-                const categoryId = categorySnapshot.docs[0].id;
-                articlesQuery = articlesQuery.where('categoryId', '==', categoryId);
-            } else {
-                 return []; // Category not found, return no articles
-            }
-        } else if (config.type === 'tag') {
-            articlesQuery = articlesQuery.where('tags', 'array-contains', config.value);
-        }
-    }
-    
-    articlesQuery = articlesQuery.orderBy('updatedAt', 'desc').limit(config?.limit || 5);
-    
-    const snapshot = await articlesQuery.get();
-
-    return snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            title: data.title,
-            excerpt: data.excerpt,
-            featuredImage: data.featuredImage || 'https://placehold.co/600x400.png',
-            url: `/article/${doc.id}`,
-        }
-    });
-}
-
 function parseAndRenderWidget(html: string, articles: Article[]): string {
     const loopStartTag = '<!-- loop start -->';
     const loopEndTag = '<!-- loop end -->';
@@ -80,7 +42,6 @@ function parseAndRenderWidget(html: string, articles: Article[]): string {
 
     const renderedItems = articles.map(article => {
         let itemHtml = loopContentTemplate;
-        // Basic Handlebars-style replacement
         itemHtml = itemHtml.replace(/\{\{title\}\}/g, article.title || '');
         itemHtml = itemHtml.replace(/\{\{excerpt\}\}/g, article.excerpt || '');
         itemHtml = itemHtml.replace(/\{\{featuredImage\}\}/g, article.featuredImage || '');
@@ -92,50 +53,102 @@ function parseAndRenderWidget(html: string, articles: Article[]): string {
 }
 
 
-export default async function WidgetRenderer({ widgetId }: { widgetId: string }) {
-    try {
-        const widget = await getWidget(widgetId);
+export default function WidgetRenderer({ widgetId }: { widgetId: string }) {
+    const [renderedHtml, setRenderedHtml] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [errorDetails, setErrorDetails] = useState('');
 
-        if (!widget || !widget.html) {
-            return (
-                <div className="p-4 border border-dashed rounded-md text-muted-foreground">
-                    <p>Widget not found or has no HTML content.</p>
-                    <p className="text-xs">ID: {widgetId}</p>
-                </div>
-            );
-        }
-        
-        const articles = await getArticles(widget.config);
-        const renderedHtml = parseAndRenderWidget(widget.html, articles);
+    useEffect(() => {
+        const fetchWidgetAndArticles = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                // Get Widget
+                const widgetRef = doc(db, 'widgets', widgetId);
+                const widgetDoc = await getDoc(widgetRef);
+                if (!widgetDoc.exists() || !widgetDoc.data()?.html) {
+                    throw new Error('Widget not found or has no HTML content.');
+                }
+                const widget = { id: widgetDoc.id, ...widgetDoc.data() } as Widget;
 
-        return <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />;
-    } catch (error: any) {
-        // Check for Firestore index error
-        const isIndexError = error.code === 'FAILED_PRECONDITION' || (error.message && (error.message.includes('requires an index') || error.message.includes('needs an index')));
-        if (isIndexError) {
-             return (
-                <div className="p-4 border border-destructive/50 rounded-md text-destructive bg-destructive/10 flex items-start gap-4">
-                    <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0"/>
-                    <div>
-                        <p className="font-bold">Database Index Required</p>
-                        <p className="text-sm">This widget requires a database index that has not been created yet. Please go to the Firebase console to create it.</p>
-                        <p className="text-xs mt-2 text-destructive/70">Widget ID: {widgetId}</p>
-                    </div>
-                </div>
-            );
-        }
+                // Get Articles
+                const config = widget.config;
+                let articlesQuery: any = query(collection(db, 'articles'), where('status', '==', 'Published'));
 
-        // Generic error for other issues
-        console.error(`Error rendering widget ${widgetId}:`, error);
+                if (config && config.value) {
+                    if (config.type === 'category') {
+                        const categoriesRef = collection(db, 'categories');
+                        const categoryQuery = query(categoriesRef, where('name', '==', config.value), limit(1));
+                        const categorySnapshot = await getDocs(categoryQuery);
+                        if (!categorySnapshot.empty) {
+                            const categoryId = categorySnapshot.docs[0].id;
+                            articlesQuery = query(articlesQuery, where('categoryId', '==', categoryId));
+                        } else {
+                            // Category not found, return no articles
+                           setRenderedHtml(parseAndRenderWidget(widget.html, []));
+                           setLoading(false);
+                           return;
+                        }
+                    } else if (config.type === 'tag') {
+                        articlesQuery = query(articlesQuery, where('tags', 'array-contains', config.value));
+                    }
+                }
+                
+                articlesQuery = query(articlesQuery, orderBy('updatedAt', 'desc'), limit(config?.limit || 5));
+                const articlesSnapshot = await getDocs(articlesQuery);
+                
+                const articles = articlesSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        title: data.title,
+                        excerpt: data.excerpt,
+                        featuredImage: data.featuredImage || 'https://placehold.co/600x400.png',
+                        url: `/article/${doc.id}`,
+                    }
+                });
+
+                setRenderedHtml(parseAndRenderWidget(widget.html, articles));
+
+            } catch (err: any) {
+                const isIndexError = err.code === 'failed-precondition' || (err.message && (err.message.toLowerCase().includes('requires an index')));
+                if (isIndexError) {
+                    setError('Database Index Required');
+                    setErrorDetails('This widget requires a database index that has not been created yet. Please go to the Firebase console to create it.');
+                } else {
+                    console.error(`Error rendering widget ${widgetId}:`, err);
+                    setError('Widget Failed to Render');
+                    setErrorDetails('An unexpected error occurred.');
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchWidgetAndArticles();
+    }, [widgetId]);
+
+    if (loading) {
+        return <Skeleton className="h-48 w-full" />;
+    }
+
+    if (error) {
         return (
-            <div className="p-4 border border-dashed rounded-md text-muted-foreground flex items-start gap-4">
+            <div className="p-4 border border-destructive/50 rounded-md text-destructive bg-destructive/10 flex items-start gap-4">
                 <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0"/>
-                 <div>
-                    <p className="font-bold">Widget Failed to Render</p>
-                    <p className="text-sm">An unexpected error occurred.</p>
-                    <p className="text-xs mt-2">ID: {widgetId}</p>
+                <div>
+                    <p className="font-bold">{error}</p>
+                    <p className="text-sm">{errorDetails}</p>
+                    <p className="text-xs mt-2 text-destructive/70">Widget ID: {widgetId}</p>
                 </div>
             </div>
         );
     }
+
+    if (renderedHtml) {
+      return <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />;
+    }
+
+    return null;
 }

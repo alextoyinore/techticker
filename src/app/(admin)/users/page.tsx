@@ -1,7 +1,7 @@
 'use client';
 
-import { MoreHorizontal, PlusCircle, LoaderCircle } from "lucide-react"
-import { useEffect, useState, useCallback, useTransition } from "react";
+import { MoreHorizontal } from "lucide-react"
+import { useEffect, useState, useCallback } from "react";
 import { collection, getDocs, query, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -31,7 +31,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -50,12 +49,10 @@ import {
 } from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
-import { createUser } from "@/app/actions/user-actions";
 
 interface User {
     id: string;
@@ -72,18 +69,10 @@ export default function UsersPage() {
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
     const { user: currentUser } = useAuth();
-    const [isPending, startTransition] = useTransition();
 
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
     const [isDeleteUserDialogOpen, setIsDeleteUserDialogOpen] = useState(false);
-    const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
-    
-    // Add User form state
-    const [newUserName, setNewUserName] = useState("");
-    const [newUserEmail, setNewUserEmail] = useState("");
-    const [newUserPassword, setNewUserPassword] = useState("");
-    const [newUserRole, setNewUserRole] = useState("writer");
     
     const [newRole, setNewRole] = useState("");
 
@@ -154,43 +143,6 @@ export default function UsersPage() {
         }
     };
 
-    const handleAddUser = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!currentUser) {
-            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
-            return;
-        }
-
-        startTransition(async () => {
-            try {
-                const authToken = await currentUser.getIdToken();
-                const result = await createUser({
-                    displayName: newUserName,
-                    email: newUserEmail,
-                    password: newUserPassword,
-                    role: newUserRole,
-                    authToken
-                });
-
-                if (result.error) {
-                    toast({ variant: 'destructive', title: 'Error', description: result.error });
-                } else {
-                    toast({ title: 'Success', description: 'User created successfully.' });
-                    setIsAddUserDialogOpen(false);
-                    // Reset form
-                    setNewUserName("");
-                    setNewUserEmail("");
-                    setNewUserPassword("");
-                    setNewUserRole("writer");
-                    fetchUsers();
-                }
-            } catch (error) {
-                console.error("Error creating user:", error);
-                toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
-            }
-        });
-    };
-
     const getRoleBadge = (role: string) => {
         switch (role?.toLowerCase()) {
             case "superadmin":
@@ -215,60 +167,7 @@ export default function UsersPage() {
                 <CardTitle className="font-headline">Users</CardTitle>
                 <CardDescription>Manage your team and their roles.</CardDescription>
             </div>
-            <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1" disabled={currentUser?.role !== 'superadmin'}>
-                        <PlusCircle className="h-3.5 w-3.5" />
-                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Add User
-                        </span>
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <form onSubmit={handleAddUser}>
-                        <DialogHeader>
-                        <DialogTitle>Add New User</DialogTitle>
-                        <DialogDescription>
-                            Create a new user and assign them a role. They will be able to change their password later.
-                        </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="name" className="text-right">Name</Label>
-                                <Input id="name" value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Ada Lovelace" className="col-span-3" required />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="email" className="text-right">Email</Label>
-                                <Input id="email" type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} placeholder="ada@example.com" className="col-span-3" required />
-                            </div>
-                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="password" className="text-right">Password</Label>
-                                <Input id="password" type="password" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} className="col-span-3" required />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="role" className="text-right">Role</Label>
-                                <Select value={newUserRole} onValueChange={setNewUserRole}>
-                                    <SelectTrigger className="col-span-3">
-                                        <SelectValue placeholder="Select a role" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="writer">Writer</SelectItem>
-                                        <SelectItem value="editor">Editor</SelectItem>
-                                        <SelectItem value="admin">Admin</SelectItem>
-                                        <SelectItem value="superadmin">Superadmin</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>Cancel</Button>
-                            <Button type="submit" disabled={isPending}>
-                                {isPending ? <LoaderCircle className="animate-spin" /> : 'Create User'}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+            {/* "Add User" feature was removed because it requires firebase-admin SDK which caused server issues. */}
         </div>
       </CardHeader>
       <CardContent>
