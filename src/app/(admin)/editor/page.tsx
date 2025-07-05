@@ -116,7 +116,7 @@ export default function EditorPage() {
                     <Input 
                         id="title" 
                         placeholder="Enter a catchy title..." 
-                        className="border-0 border-b border-input px-0 text-4xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none" 
+                        className="border-0 border-b border-input px-0 text-5xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none" 
                     />
                  </div>
                 <RichTextEditor value={content} onChange={setContent} className="flex-grow flex flex-col" />
