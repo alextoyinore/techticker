@@ -87,12 +87,19 @@ export default function EditorPage() {
                     <Input 
                         id="title" 
                         placeholder="Enter a catchy title..." 
-                        className="border-0 border-b border-input px-0 text-2xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none" 
+                        className="border-0 border-b border-input px-0 text-3xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none" 
                     />
                  </div>
                 <RichTextEditor value={content} onChange={setContent} className="flex-grow flex flex-col" />
             </div>
             <div className="lg:col-span-1 flex flex-col gap-8">
+                <div className="space-y-4">
+                    <h3 className="text-xl font-semibold font-headline">Publish</h3>
+                    <div className="flex flex-col gap-4">
+                        <Button>Publish Article</Button>
+                        <Button variant="outline">Save Draft</Button>
+                    </div>
+                </div>
                  <div className="space-y-4">
                     <h3 className="text-xl font-semibold font-headline">Featured Image</h3>
                     <div className="relative aspect-video w-full rounded-md border-2 border-dashed flex items-center justify-center bg-muted/50 hover:border-primary transition-colors">
@@ -125,13 +132,6 @@ export default function EditorPage() {
                     >
                         {isUploading ? 'Uploading...' : (featuredImage ? 'Change Image' : 'Set Featured Image')}
                     </Button>
-                </div>
-                <div className="space-y-4">
-                    <h3 className="text-xl font-semibold font-headline">Publish</h3>
-                    <div className="flex flex-col gap-4">
-                        <Button>Publish Article</Button>
-                        <Button variant="outline">Save Draft</Button>
-                    </div>
                 </div>
                  <div className="space-y-4">
                     <h3 className="text-xl font-semibold font-headline">Details</h3>
