@@ -186,13 +186,13 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
       case 'bold': wrapSelection('**', '**'); break;
       case 'italic': wrapSelection('*', '*'); break;
       case 'strike': wrapSelection('~~', '~~'); break;
-      case 'code': wrapSelection('`', '`'); break;
       case 'h1': insertAtLineStart('# '); break;
       case 'h2': insertAtLineStart('## '); break;
       case 'h3': insertAtLineStart('### '); break;
       case 'ul': insertAtLineStart('- '); break;
       case 'ol': insertAtLineStart('1. '); break;
       case 'quote':
+      case 'code':
       case 'link':
       case 'image':
       case 'table':
@@ -411,6 +411,47 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
     );
   };
 
+  const CodeDialog = () => {
+    const [codeText, setCodeText] = useState('');
+    const [language, setLanguage] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (codeText) {
+        const codeMarkdown = `\n\`\`\`${language}\n${codeText}\n\`\`\`\n`;
+        insertText(codeMarkdown);
+      }
+      setDialog(null);
+      setCodeText('');
+      setLanguage('');
+    };
+
+    return (
+      <Dialog open={dialog === 'code'} onOpenChange={() => setDialog(null)}>
+        <DialogContent>
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>Insert Code Block</DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="language">Language (optional)</Label>
+                <Input id="language" value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="e.g., javascript, python" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="code-text">Code</Label>
+                <Textarea id="code-text" value={codeText} onChange={(e) => setCodeText(e.target.value)} placeholder="Paste your code here..." rows={10} required />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit">Insert</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <>
       <Tabs defaultValue="write" className={cn("w-full", className)}>
@@ -444,6 +485,7 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
       <ImageDialog />
       <QuoteDialog />
       <TableDialog />
+      <CodeDialog />
     </>
   );
 }
