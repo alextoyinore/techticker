@@ -36,10 +36,12 @@ import {
   Table,
   Code,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
+  className?: string;
 }
 
 // A dedicated toolbar component for the markdown editor
@@ -107,7 +109,7 @@ const MarkdownToolbar = ({ onCommand }: { onCommand: (command: string) => void }
 };
 
 
-export default function RichTextEditor({ value, onChange }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, className }: RichTextEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [dialog, setDialog] = useState<string | null>(null);
 
@@ -411,26 +413,26 @@ export default function RichTextEditor({ value, onChange }: RichTextEditorProps)
 
   return (
     <>
-      <Tabs defaultValue="write" className="w-full">
+      <Tabs defaultValue="write" className={cn("w-full", className)}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="write">Write</TabsTrigger>
           <TabsTrigger value="preview">Preview</TabsTrigger>
         </TabsList>
-        <TabsContent value="write">
-          <div className="rounded-md border">
+        <TabsContent value="write" className="flex-grow">
+          <div className="rounded-md border h-full flex flex-col">
             <MarkdownToolbar onCommand={handleCommand} />
             <Textarea
               ref={textareaRef}
               placeholder="Start writing your masterpiece in Markdown..."
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              className="min-h-[400px] w-full rounded-t-none border-0 p-4 font-mono shadow-none focus-visible:ring-0"
+              className="w-full rounded-t-none border-0 p-4 font-mono shadow-none focus-visible:ring-0 flex-grow"
             />
           </div>
         </TabsContent>
-        <TabsContent value="preview">
-          <Card className="min-h-[400px]">
-            <CardContent className="p-6">
+        <TabsContent value="preview" className="flex-grow">
+          <Card className="h-full flex flex-col">
+            <CardContent className="p-6 flex-grow">
               <article className="prose dark:prose-invert max-w-none">
                 {value ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown> : <p className="text-muted-foreground">Preview will appear here.</p>}
               </article>
