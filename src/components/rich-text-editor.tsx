@@ -1,7 +1,6 @@
 "use client"
 
-import { getBlockAbove, Plate, useEditorRef } from "@udecode/plate-common";
-import { Editable } from "slate-react";
+import { getBlockAbove, Plate, useEditorRef, Editable } from "@udecode/plate-common";
 import { setNodes } from 'slate';
 import {
   MARK_BOLD,
@@ -62,7 +61,7 @@ const EditorContent = () => {
 
     return (
         <div className="relative">
-            <Toolbar className="flex flex-wrap items-center gap-1 rounded-t-md border border-b-0 p-2 bg-secondary/50">
+            <Toolbar className="flex flex-wrap items-center gap-1 rounded-t-md border-b-0 border p-2 bg-secondary/50">
                 <ToolbarGroup>
                     <PlateMarkToolbarButton nodeType={MARK_BOLD} tooltip="Bold (⌘+B)">
                         <Bold className="h-4 w-4" />
