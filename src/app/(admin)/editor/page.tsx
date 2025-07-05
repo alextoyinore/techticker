@@ -109,8 +109,8 @@ export default function EditorPage() {
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            <div className="lg:col-span-2 flex flex-col gap-4 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+            <div className="lg:col-span-3 flex flex-col gap-4 h-full">
                  <div>
                     <Label htmlFor="title" className="text-sm text-muted-foreground">Article Title</Label>
                     <Input 
