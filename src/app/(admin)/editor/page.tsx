@@ -13,16 +13,12 @@ export default function EditorPage() {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            <div className="lg:col-span-2">
-                <Card>
-                    <CardHeader>
-                        <Label htmlFor="title" className="text-sm text-muted-foreground">Article Title</Label>
-                        <Input id="title" placeholder="Enter a catchy title..." className="text-2xl font-headline h-auto p-2 border-0 shadow-none focus-visible:ring-0" />
-                    </CardHeader>
-                    <CardContent>
-                        <RichTextEditor value={content} onChange={setContent} />
-                    </CardContent>
-                </Card>
+            <div className="lg:col-span-2 space-y-4">
+                 <div>
+                    <Label htmlFor="title" className="text-sm text-muted-foreground">Article Title</Label>
+                    <Input id="title" placeholder="Enter a catchy title..." className="border-0 px-0 text-2xl font-headline h-auto focus-visible:ring-0 focus-visible:ring-offset-0" />
+                 </div>
+                <RichTextEditor value={content} onChange={setContent} />
             </div>
             <div className="lg:col-span-1 flex flex-col gap-6">
                 <Card>
