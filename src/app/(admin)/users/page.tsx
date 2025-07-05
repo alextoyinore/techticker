@@ -2,7 +2,7 @@
 
 import { MoreHorizontal, PlusCircle } from "lucide-react"
 import { useEffect, useState } from "react";
-import { collection, getDocs, query } from "firebase/firestore";
+import { collection, getDocs, query, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Dialog,
   DialogContent,
@@ -43,6 +53,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 interface User {
     id: string;
@@ -57,6 +68,13 @@ interface User {
 export default function UsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
+    const [isDeleteUserDialogOpen, setIsDeleteUserDialogOpen] = useState(false);
+    const [newRole, setNewRole] = useState("");
+
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -82,17 +100,65 @@ export default function UsersPage() {
         fetchUsers();
     }, []);
 
+    const handleEditRoleClick = (user: User) => {
+        setSelectedUser(user);
+        setNewRole(user.role);
+        setIsEditRoleDialogOpen(true);
+    };
+
+    const handleDeleteUserClick = (user: User) => {
+        setSelectedUser(user);
+        setIsDeleteUserDialogOpen(true);
+    };
+    
+    const handleUpdateRole = async () => {
+        if (!selectedUser || !newRole) return;
+        try {
+            const userRef = doc(db, "users", selectedUser.id);
+            await updateDoc(userRef, { role: newRole });
+            setUsers(users.map(u => u.id === selectedUser.id ? { ...u, role: newRole } : u));
+            toast({ title: 'Success', description: `User role updated to ${newRole}.` });
+        } catch (error) {
+            console.error("Error updating role:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update user role.' });
+        } finally {
+            setIsEditRoleDialogOpen(false);
+            setSelectedUser(null);
+        }
+    };
+
+    const handleDeleteUser = async () => {
+        if (!selectedUser) return;
+        try {
+            await deleteDoc(doc(db, "users", selectedUser.id));
+            setUsers(users.filter(u => u.id !== selectedUser.id));
+            toast({ title: 'Success', description: 'User removed from the list.' });
+        } catch (error) {
+            console.error("Error deleting user document:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not remove user.' });
+        } finally {
+            setIsDeleteUserDialogOpen(false);
+            setSelectedUser(null);
+        }
+    };
+
     const getRoleBadge = (role: string) => {
-        switch (role) {
-            case "superadmin": return "default";
-            case "admin": return "default";
-            case "editor": return "secondary";
-            case "writer": return "outline";
-            default: return "secondary";
+        switch (role?.toLowerCase()) {
+            case "superadmin":
+            case "admin":
+                return "default";
+            case "editor":
+                return "secondary";
+            case "writer":
+            case "user":
+                return "outline";
+            default:
+                return "outline";
         }
     }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -113,7 +179,7 @@ export default function UsersPage() {
                     <DialogHeader>
                     <DialogTitle>Add New User</DialogTitle>
                     <DialogDescription>
-                        This functionality is not implemented. Please invite users through your authentication provider.
+                        A secure user invitation system requires server-side logic. Please invite new users directly through your Firebase Authentication provider.
                     </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -205,9 +271,13 @@ export default function UsersPage() {
                         </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>Edit Role (Not Implemented)</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">Delete (Not Implemented)</DropdownMenuItem>
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => handleEditRoleClick(user)}>
+                                Edit Role
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteUserClick(user)}>
+                                Delete
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                     </TableCell>
@@ -218,5 +288,54 @@ export default function UsersPage() {
         </Table>
       </CardContent>
     </Card>
+
+    <Dialog open={isEditRoleDialogOpen} onOpenChange={setIsEditRoleDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Edit User Role</DialogTitle>
+                <DialogDescription>Change the role for {selectedUser?.name}.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select value={newRole} onValueChange={setNewRole}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="user">User</SelectItem>
+                            <SelectItem value="writer">Writer</SelectItem>
+                            <SelectItem value="editor">Editor</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="superadmin">Superadmin</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditRoleDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleUpdateRole}>Save Changes</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    <AlertDialog open={isDeleteUserDialogOpen} onOpenChange={setIsDeleteUserDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will remove the user record for &quot;{selectedUser?.name}&quot; from the CMS. 
+                    This action does not delete their authentication account and cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteUser} className="bg-destructive hover:bg-destructive/90">
+                    Yes, remove user record
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
