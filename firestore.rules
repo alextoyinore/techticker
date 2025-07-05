@@ -3,58 +3,60 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user has specific roles.
-    function hasRole(allowedRoles) {
-      // Ensure the user is authenticated before checking role.
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in allowedRoles;
+    
+    // Helper function to check if the user is part of the CMS team.
+    function isCMSUser() {
+      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return role in ['admin', 'superadmin', 'editor', 'writer'];
     }
 
-    // Default rule: deny all reads and writes unless explicitly allowed below.
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // USERS Collection
-    // Users can manage their own document, admins can list all users.
-    match /users/{userId} {
-      allow create: if request.auth.uid == userId;
-      allow get, update: if request.auth.uid == userId;
-      allow list: if hasRole(['admin', 'superadmin']);
-    }
-
-    // ARTICLES Collection
-    // Public can read published articles. Writers and higher roles can manage content.
+    // Publicly readable collections
     match /articles/{articleId} {
-      allow get: if resource.data.status == 'Published' || hasRole(['writer', 'editor', 'admin', 'superadmin']);
-      allow list: if hasRole(['writer', 'editor', 'admin', 'superadmin']);
-      allow create, update: if hasRole(['writer', 'editor', 'admin', 'superadmin']);
-      allow delete: if hasRole(['admin', 'superadmin']);
+      // Anyone can read published articles
+      allow read: if resource.data.status == 'Published';
+      // Only CMS users can write
+      allow write: if request.auth.uid != null && isCMSUser();
     }
 
-    // COMMENTS Collection
-    // Public can submit comments and read approved ones. Editors and higher can moderate.
-    match /comments/{commentId} {
-      // `list` is open, but `get` is secure. This allows public queries for approved comments.
-      // Firestore checks the `get` rule for each document returned by a list query.
-      allow list: if true;
-      allow get: if resource.data.status == 'Approved' || hasRole(['editor', 'admin', 'superadmin']);
-      allow create: if request.auth != null;
-      allow update, delete: if hasRole(['editor', 'admin', 'superadmin']);
-    }
-
-    // CATEGORIES Collection
-    // Public can read, editors and higher can write.
-    match /categories/{categoryId} {
-      allow read: if true;
-      allow write: if hasRole(['editor', 'admin', 'superadmin']);
+    match /pages/{pageId} {
+       // Anyone can read published pages
+      allow read: if resource.data.status == 'Published';
+      // Only CMS users can write
+      allow write: if request.auth.uid != null && isCMSUser();
     }
     
-    // WIDGETS Collection
-    // Public can read, editors and higher can write.
-    match /widgets/{widgetId} {
-      allow read: if true;
-      allow write: if hasRole(['editor', 'admin', 'superadmin']);
+    match /comments/{commentId} {
+      // Anyone can read approved comments
+      allow read: if resource.data.status == 'Approved';
+      // Any authenticated user can create a comment (will be pending)
+      allow create: if request.auth.uid != null;
+      // Only CMS users can update/delete comments
+      allow update, delete: if request.auth.uid != null && isCMSUser();
+    }
+    
+    // Admin-only collections that require a CMS role to access.
+    match /layouts/{docId} {
+      allow read, write: if request.auth.uid != null && isCMSUser();
+    }
+    
+    match /widgets/{docId} {
+      allow read, write: if request.auth.uid != null && isCMSUser();
+    }
+
+    match /categories/{docId} {
+      allow read, write: if request.auth.uid != null && isCMSUser();
+    }
+    
+    // Users can update their own profile. CMS users can read all profiles.
+    match /users/{userId} {
+      allow read: if request.auth.uid != null && isCMSUser();
+      allow update: if request.auth.uid == userId;
+      // Create/delete is handled by secure cloud functions.
+    }
+    
+    // Allow authenticated users to trigger emails.
+    match /mail/{docId} {
+        allow create: if request.auth.uid != null;
     }
   }
 }
