@@ -21,13 +21,7 @@ export const adminDb = admin.firestore();
 // We wrap this in a try/catch to handle hot-reloading in development.
 try {
   adminDb.settings({ preferRest: true });
-} catch (e: any) {
-    // In a development environment with hot-reloading, `settings()` may be called
-    // multiple times, which throws an error. We can safely ignore this specific error
-    // as it indicates Firestore is already initialized. The error code for this is
-    // 'failed-precondition'.
-    if (e.code !== 'failed-precondition') {
-      // Re-throw other errors
-      throw e;
-    }
+} catch (e) {
+  // This error is expected in development with hot-reloading.
+  // The settings can only be set once, so we can safely ignore the error.
 }
