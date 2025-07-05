@@ -83,7 +83,7 @@ export default function AdminLayout({
   return (
     <SidebarProvider>
       <Sidebar>
-        <SidebarHeader className="px-4 mb-4">
+        <SidebarHeader className="px-4 mb-4 pt-2">
           <h1 className="text-xl font-bold font-headline text-sidebar-foreground">
             TechTicker
           </h1>
