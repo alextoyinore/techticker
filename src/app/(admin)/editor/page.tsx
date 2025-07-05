@@ -96,11 +96,11 @@ export default function EditorPage() {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-        if (!cloudName || !uploadPreset) {
+        if (!cloudName || !uploadPreset || cloudName === "YOUR_CLOUD_NAME") {
             toast({
                 variant: 'destructive',
                 title: 'Cloudinary not configured',
-                description: 'Please set Cloudinary environment variables in the .env file.',
+                description: 'Please set Cloudinary environment variables in your .env.local file.',
             });
             return;
         }
@@ -178,8 +178,8 @@ export default function EditorPage() {
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-            <div className="lg:col-span-3 flex flex-col gap-4 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="lg:col-span-2 flex flex-col gap-4 h-full">
                  <div>
                     <Label htmlFor="title" className="text-sm text-muted-foreground">Article Title</Label>
                     <Input 
