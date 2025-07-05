@@ -296,10 +296,13 @@ export default function WidgetsPage() {
                                     <div className="space-y-2">
                                         <Label htmlFor="config-value">{widgetConfigType === 'category' ? 'Select Category (Optional)' : 'Enter Tag (Optional)'}</Label>
                                         {widgetConfigType === 'category' ? (
-                                            <Select value={widgetConfigValue} onValueChange={setWidgetConfigValue}>
+                                            <Select
+                                                value={widgetConfigValue || '__LATEST__'}
+                                                onValueChange={(value) => setWidgetConfigValue(value === '__LATEST__' ? '' : value)}
+                                            >
                                                 <SelectTrigger id="config-value"><SelectValue placeholder={loadingCategories ? 'Loading...' : 'Latest Articles'} /></SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="">Latest Articles</SelectItem>
+                                                    <SelectItem value="__LATEST__">Latest Articles</SelectItem>
                                                     {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
