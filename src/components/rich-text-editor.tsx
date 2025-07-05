@@ -38,7 +38,7 @@ import {
   BookCopy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface RichTextEditorProps {
   value: string;
@@ -460,7 +460,7 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
   };
 
   const RelatedArticleDialog = () => {
-    const [selectedArticleId, setSelectedArticleId] = useState('');
+    const [selectedArticleIds, setSelectedArticleIds] = useState<string[]>([]);
 
     // TODO: Replace with actual article fetching from Firestore
     const mockArticles = [
@@ -470,15 +470,28 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
         { id: 'vscode-extensions', title: 'Top 10 VSCode Extensions for 2024' },
         { id: 'edge-computing', title: 'How Edge Computing is Changing the IoT' },
     ];
+    
+    const handleCheckedChange = (articleId: string, checked: boolean | 'indeterminate') => {
+        setSelectedArticleIds(prev => {
+            if (checked) {
+                return [...prev, articleId];
+            } else {
+                return prev.filter(id => id !== articleId);
+            }
+        });
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      const article = mockArticles.find(a => a.id === selectedArticleId);
-      if (article) {
-        insertText(`[${article.title}](/article/${article.id})`);
+      const selectedArticles = mockArticles.filter(a => selectedArticleIds.includes(a.id));
+      if (selectedArticles.length > 0) {
+        const linksMarkdown = selectedArticles
+            .map(article => `* [${article.title}](/article/${article.id})`)
+            .join('\n');
+        insertText(`\n**Related Articles**\n${linksMarkdown}\n`);
       }
       setDialog(null);
-      setSelectedArticleId('');
+      setSelectedArticleIds([]);
     };
 
     return (
@@ -486,21 +499,25 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
         <DialogContent>
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle>Insert Related Article</DialogTitle>
+              <DialogTitle>Insert Related Articles</DialogTitle>
             </DialogHeader>
             <div className="py-4 space-y-4">
-              <Label>Select an article to link to</Label>
-              <RadioGroup value={selectedArticleId} onValueChange={setSelectedArticleId} className="space-y-2">
+              <Label>Select articles to link to</Label>
+               <div className="space-y-2">
                 {mockArticles.map((article) => (
                   <div key={article.id} className="flex items-center space-x-2">
-                    <RadioGroupItem value={article.id} id={`article-${article.id}`} />
+                    <Checkbox
+                        id={`article-${article.id}`}
+                        checked={selectedArticleIds.includes(article.id)}
+                        onCheckedChange={(checked) => handleCheckedChange(article.id, checked)}
+                    />
                     <Label htmlFor={`article-${article.id}`} className="font-normal">{article.title}</Label>
                   </div>
                 ))}
-              </RadioGroup>
+              </div>
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={!selectedArticleId}>Insert Link</Button>
+              <Button type="submit" disabled={selectedArticleIds.length === 0}>Insert Links</Button>
             </DialogFooter>
           </form>
         </DialogContent>
