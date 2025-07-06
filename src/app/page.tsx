@@ -32,64 +32,69 @@ interface Layout {
   zones: Record<string, string[]>;
 }
 
-async function getWidgetWithArticles(widgetId: string): Promise<{ widget: Widget; articles: Article[] }> {
+async function getWidgetWithArticles(widgetId: string): Promise<{ widget: Widget; articles: Article[] } | null> {
     const widgetRef = doc(db, 'widgets', widgetId);
     const widgetDoc = await getDoc(widgetRef);
     
     if (!widgetDoc.exists()) {
-        throw new Error(`Widget with id ${widgetId} not found.`);
+        console.error(`Error: Widget with id ${widgetId} not found, but is referenced in a layout.`);
+        return null;
     }
 
     const widget = { id: widgetDoc.id, ...widgetDoc.data() } as Widget;
-    const config = widget.config;
-
-    let articlesQuery = query(collection(db, 'articles'), where('status', '==', 'Published'));
-    let requiresCompositeIndex = false;
-
-    if (config && config.value) {
-        if (config.type === 'category') {
-             const categoriesRef = collection(db, 'categories');
-             const categoryQuery = query(categoriesRef, where('name', '==', config.value), limit(1));
-             const categorySnapshot = await getDocs(categoryQuery);
-             if (!categorySnapshot.empty) {
-                 const categoryId = categorySnapshot.docs[0].id;
-                 articlesQuery = query(articlesQuery, where('categoryId', '==', categoryId));
-                 requiresCompositeIndex = true;
-             } else {
-                 return { widget, articles: [] }; // Category not found
-             }
-        } else if (config.type === 'tag') {
-            articlesQuery = query(articlesQuery, where('tags', 'array-contains', config.value));
-            requiresCompositeIndex = true;
-        }
-    }
-
-    // To prevent errors on a fresh Firebase project, we only add 'orderBy' if it doesn't require a composite index.
-    // For sorted results on filtered widgets, a composite index must be created in Firestore.
-    // The Firebase console will provide a link to create it if it's missing.
-    if (!requiresCompositeIndex) {
-        articlesQuery = query(articlesQuery, orderBy('createdAt', 'desc'));
-    }
     
-    articlesQuery = query(articlesQuery, limit(config?.limit || 5));
+    try {
+        const config = widget.config;
+        let articlesQuery = query(collection(db, 'articles'), where('status', '==', 'Published'));
+        let requiresCompositeIndex = false;
 
-    const articlesSnapshot = await getDocs(articlesQuery);
-    
-    const articles = articlesSnapshot.docs.map(doc => {
-        const data = doc.data();
-        const ts = data.createdAt as Timestamp;
-        return {
-            id: doc.id,
-            title: data.title,
-            excerpt: data.excerpt,
-            featuredImage: data.featuredImage || 'https://placehold.co/600x400.png',
-            url: `/article/${doc.id}`,
-            authorName: data.authorName,
-            createdAt: ts ? ts.toDate().toISOString() : new Date().toISOString(),
+        if (config && config.value) {
+            if (config.type === 'category') {
+                 const categoriesRef = collection(db, 'categories');
+                 const categoryQuery = query(categoriesRef, where('name', '==', config.value), limit(1));
+                 const categorySnapshot = await getDocs(categoryQuery);
+                 if (!categorySnapshot.empty) {
+                     const categoryId = categorySnapshot.docs[0].id;
+                     articlesQuery = query(articlesQuery, where('categoryId', '==', categoryId));
+                     requiresCompositeIndex = true;
+                 } else {
+                     return { widget, articles: [] }; // Category not found, return gracefully
+                 }
+            } else if (config.type === 'tag') {
+                articlesQuery = query(articlesQuery, where('tags', 'array-contains', config.value));
+                requiresCompositeIndex = true;
+            }
         }
-    });
 
-    return { widget, articles };
+        if (!requiresCompositeIndex) {
+            articlesQuery = query(articlesQuery, orderBy('createdAt', 'desc'));
+        }
+        
+        articlesQuery = query(articlesQuery, limit(config?.limit || 5));
+
+        const articlesSnapshot = await getDocs(articlesQuery);
+        
+        const articles = articlesSnapshot.docs.map(doc => {
+            const data = doc.data();
+            const ts = data.createdAt as Timestamp;
+            return {
+                id: doc.id,
+                title: data.title,
+                excerpt: data.excerpt,
+                featuredImage: data.featuredImage || 'https://placehold.co/600x400.png',
+                url: `/article/${doc.id}`,
+                authorName: data.authorName,
+                createdAt: ts ? ts.toDate().toISOString() : new Date().toISOString(),
+            }
+        });
+
+        return { widget, articles };
+
+    } catch (err) {
+        console.error(`Failed to fetch articles for widget "${widget.name}" (${widget.id}). This may be due to a missing Firestore index. Error:`, err);
+        // If a query fails (e.g., missing index), return the widget with no articles so the page can still render.
+        return { widget, articles: [] };
+    }
 }
 
 export default function HomePage() {
@@ -116,33 +121,31 @@ export default function HomePage() {
             const layout = { id: docSnap.id, ...docSnap.data() } as Layout;
 
             const renderedZones: { [key: string]: React.ReactNode } = {};
-            const zonePromises = Object.entries(layout.zones || {}).map(async ([zoneName, widgetIds]) => {
-                if (widgetIds && widgetIds.length > 0) {
-                    const widgetDataResults = await Promise.allSettled(widgetIds.map(getWidgetWithArticles));
-                    
-                    const successfulWidgets = widgetDataResults
-                        .filter(result => {
-                            if (result.status === 'rejected') {
-                                console.error("Failed to fetch widget data:", result.reason);
-                                return false;
-                            }
-                            return true;
-                        })
-                        .map(result => (result as PromiseFulfilledResult<{ widget: Widget; articles: Article[] }>).value);
 
-                    if (successfulWidgets.length > 0) {
-                        renderedZones[zoneName] = (
-                            <div className="space-y-8">
-                                {successfulWidgets.map(({ widget, articles }) => (
-                                    <WidgetRenderer key={widget.id} widget={widget} articles={articles} />
-                                ))}
-                            </div>
-                        );
-                    }
+            const allZonePromises = Object.entries(layout.zones || {}).map(async ([zoneName, widgetIds]) => {
+                if (!widgetIds || widgetIds.length === 0) {
+                    return;
+                }
+
+                // Promise.all is safe because getWidgetWithArticles now catches its own errors.
+                const widgetDataArray = await Promise.all(
+                    widgetIds.map(getWidgetWithArticles)
+                );
+
+                const validWidgetData = widgetDataArray.filter(Boolean) as { widget: Widget; articles: Article[] }[];
+                
+                if (validWidgetData.length > 0) {
+                    renderedZones[zoneName] = (
+                        <div className="space-y-8">
+                            {validWidgetData.map(({ widget, articles }) => (
+                                <WidgetRenderer key={widget.id} widget={widget} articles={articles} />
+                            ))}
+                        </div>
+                    );
                 }
             });
 
-            await Promise.all(zonePromises);
+            await Promise.all(allZonePromises);
             setLayoutData({ layout, zones: renderedZones });
         } catch (err) {
             console.error("Error fetching homepage layout:", err);
