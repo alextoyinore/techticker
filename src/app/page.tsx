@@ -2,8 +2,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import PublicHeader from '@/components/public-header';
 import PublicFooter from '@/components/public-footer';
 import WidgetRenderer, { type Article, type Widget } from '@/components/widget-renderer';
-import { Skeleton } from '@/components/ui/skeleton';
 import type { Timestamp } from 'firebase-admin/firestore';
+import type { firestore } from 'firebase-admin';
 
 import ClassicBlogLayout from '@/components/layouts/classic-blog-layout';
 import FeaturedArticleLayout from '@/components/layouts/featured-article-layout';
@@ -38,7 +38,7 @@ async function getWidgetWithArticles(widgetId: string): Promise<{ widget: Widget
     const widget = { id: widgetDoc.id, ...widgetDoc.data() } as Widget;
 
     const config = widget.config;
-    let articlesQuery: admin.firestore.Query = adminDb.collection('articles').where('status', '==', 'Published');
+    let articlesQuery: firestore.Query = adminDb.collection('articles').where('status', '==', 'Published');
 
     if (config && config.value) {
         if (config.type === 'category') {
@@ -95,16 +95,28 @@ async function getHomepageLayout() {
         for (const zoneName in zones) {
             const widgetIds = zones[zoneName] || [];
             if (widgetIds.length > 0) {
-                const widgetDataPromises = widgetIds.map(getWidgetWithArticles);
-                const widgetsWithArticles = await Promise.all(widgetDataPromises);
+                const widgetDataResults = await Promise.allSettled(widgetIds.map(getWidgetWithArticles));
+                
+                const successfulWidgets = widgetDataResults
+                    .filter(result => {
+                        if (result.status === 'rejected') {
+                            console.error("Failed to fetch widget data:", result.reason);
+                            return false;
+                        }
+                        return true;
+                    })
+                    .map(result => (result as PromiseFulfilledResult<{ widget: Widget; articles: Article[] }>).value);
 
-                renderedZones[zoneName] = (
-                    <div className="space-y-8">
-                        {widgetsWithArticles.map(({ widget, articles }) => (
-                            <WidgetRenderer key={widget.id} widget={widget} articles={articles} />
-                        ))}
-                    </div>
-                );
+
+                if (successfulWidgets.length > 0) {
+                    renderedZones[zoneName] = (
+                        <div className="space-y-8">
+                            {successfulWidgets.map(({ widget, articles }) => (
+                                <WidgetRenderer key={widget.id} widget={widget} articles={articles} />
+                            ))}
+                        </div>
+                    );
+                }
             }
         }
 
@@ -118,32 +130,29 @@ async function getHomepageLayout() {
 export default async function HomePage() {
   const data = await getHomepageLayout();
 
-  const renderContent = () => {
-    if (!data) {
-      return (
-        <main className="flex-grow flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">Welcome!</h1>
-            <p className="text-muted-foreground">No homepage has been set yet.</p>
-          </div>
-        </main>
-      );
-    }
-  
-    const { layout, zones } = data;
-    const LayoutComponent = layoutComponents[layout.templateId] || FullWidthLayout;
-    
-    return (
-      <main className="flex-grow">
-        <LayoutComponent {...zones} />
+  let content;
+  if (!data) {
+    content = (
+      <main className="flex-grow flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Welcome!</h1>
+          <p className="text-muted-foreground">No homepage has been set yet.</p>
+        </div>
       </main>
-    )
+    );
+  } else {
+    const LayoutComponent = layoutComponents[data.layout.templateId] || FullWidthLayout;
+    content = (
+      <main className="flex-grow">
+        <LayoutComponent {...data.zones} />
+      </main>
+    );
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <PublicHeader />
-      {renderContent()}
+      {content}
       <PublicFooter />
     </div>
   );
