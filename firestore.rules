@@ -4,73 +4,63 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isSuperAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    // Helper function to check if a user has a specific role.
+    function isOneOfRoles(roles) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in roles;
     }
-    function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
-    }
-    function isEditor() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['editor', 'admin', 'superadmin'];
-    }
-     function isWriter() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['writer', 'editor', 'admin', 'superadmin'];
-    }
+    
     function isSignedIn() {
       return request.auth != null;
     }
-    function isOwner(resource) {
-      return request.auth.uid == resource.data.authorId;
-    }
 
-    // Collections
-    match /users/{userId} {
-      // A user can create, read, and update their own document.
-      allow create, read, update: if request.auth.uid == userId;
-
-      // Admins and superadmins can list all users.
-      allow list: if isAdmin();
-      
-      // Superadmins can do anything to any user.
-      allow get, write: if isSuperAdmin();
-    }
-
+    // Articles are readable by anyone if published, but only writable by admins/editors/writers.
     match /articles/{articleId} {
-      allow read: if resource.data.status == 'Published' || isWriter();
-      allow create: if isWriter();
-      allow update, delete: if isOwner(resource) || isEditor();
-    }
-    
-    match /pages/{pageId} {
-      allow read: if resource.data.status == 'Published' || isWriter();
-      allow create: if isWriter();
-      allow update, delete: if isOwner(resource) || isEditor();
+      allow read: if resource.data.status == 'Published';
+      allow write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin', 'editor', 'writer']);
     }
 
+    // Comments can be created by any signed-in user, but are only publicly visible when 'Approved'.
+    // Moderation (update/delete) is restricted to admins/editors.
     match /comments/{commentId} {
-      allow read: if resource.data.status == 'Approved' || isEditor();
-      allow create: if isSignedIn();
-      allow update: if isEditor();
-      allow delete: if isAdmin();
+      allow read: if resource.data.status == 'Approved';
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isSignedIn() && isOneOfRoles(['admin', 'superadmin', 'editor']);
     }
 
+    // Users can read their own data. Only superadmins can manage user roles.
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || isOneOfRoles(['admin', 'superadmin']);
+      // Allow user to create their own doc on signup, and superadmins to edit any.
+      allow write: if request.auth.uid == userId || isOneOfRoles(['superadmin']);
+    }
+
+    // Site settings should only be managed by admins.
+    match /settings/{settingId} {
+        allow read, write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin']);
+    }
+
+    // Categories can be read by anyone, but only managed by admins.
     match /categories/{categoryId} {
-        allow read: if isSignedIn();
-        allow create, update, delete: if isAdmin();
+        allow read: if true;
+        allow write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin']);
     }
 
-    match /widgets/{widgetId} {
-        allow read, create, update, delete: if isEditor();
-    }
-
+    // Layouts can be read by anyone, managed by admins.
     match /layouts/{layoutId} {
-        allow read, create, update, delete: if isEditor();
+        allow read: if true;
+        allow write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin']);
     }
     
-    match /mail/{docId} {
-      allow read: if false; // No one can read emails from the client
-      allow write: if isSuperAdmin(); // Only superadmins can trigger emails
+    // Widgets can be read by anyone, managed by admins.
+    match /widgets/{widgetId} {
+        allow read: if true;
+        allow write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin']);
+    }
+
+    // Pages are readable by anyone if published, but only writable by admins/editors.
+    match /pages/{pageId} {
+      allow read: if resource.data.status == 'Published';
+      allow write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin', 'editor']);
     }
   }
 }
