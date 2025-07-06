@@ -8,8 +8,8 @@ interface ThreeColumnLayoutProps {
 
 export default function ThreeColumnLayout({ column_one, column_two, column_three }: ThreeColumnLayoutProps) {
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
         <div className="space-y-8">
           {column_one}
         </div>

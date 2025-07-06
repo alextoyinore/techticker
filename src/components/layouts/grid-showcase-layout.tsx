@@ -6,8 +6,8 @@ interface GridShowcaseLayoutProps {
 
 export default function GridShowcaseLayout({ showcase }: GridShowcaseLayoutProps) {
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
         {showcase}
       </div>
     </div>
