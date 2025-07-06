@@ -1,22 +1,16 @@
 import {
     Activity,
     ArrowUpRight,
-    CircleUser,
-    CreditCard,
-    DollarSign,
-    Menu,
+    BookOpenCheck,
+    Eye,
+    FileText,
     MessageSquare,
-    Package2,
-    Search,
     Users,
   } from "lucide-react"
   import Link from "next/link"
+  import { adminDb } from "@/lib/firebase-admin"
+  import type { Timestamp } from "firebase-admin/firestore"
   
-  import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-  } from "@/components/ui/avatar"
   import { Badge } from "@/components/ui/badge"
   import { Button } from "@/components/ui/button"
   import {
@@ -35,35 +29,99 @@ import {
     TableRow,
   } from "@/components/ui/table"
   
-  export default function Dashboard() {
+  export default async function Dashboard() {
+    let totalPosts = 0;
+    let totalComments = 0;
+    let totalUsers = 0;
+    let recentActivity: any[] = [];
+  
+    try {
+        const articlesRef = adminDb.collection('articles');
+        const commentsRef = adminDb.collection('comments');
+        const usersRef = adminDb.collection('users');
+    
+        const [articlesSnapshot, commentsSnapshot, usersSnapshot] = await Promise.all([
+            articlesRef.get(),
+            commentsRef.get(),
+            usersRef.get()
+        ]);
+    
+        totalPosts = articlesSnapshot.size;
+        totalComments = commentsSnapshot.size;
+        totalUsers = usersSnapshot.size;
+    
+        // For recent activity
+        const recentUsersQuery = usersRef.orderBy('createdAt', 'desc').limit(5);
+        const recentCommentsQuery = commentsRef.orderBy('timestamp', 'desc').limit(5);
+    
+        const [recentUsersSnap, recentCommentsSnap] = await Promise.all([
+            recentUsersQuery.get(),
+            recentCommentsQuery.get()
+        ]);
+    
+        const recentUsers = recentUsersSnap.docs.map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt as Timestamp | undefined;
+            return {
+                id: doc.id,
+                type: 'New User' as const,
+                name: data.displayName || data.email,
+                detail: data.email,
+                date: createdAt ? createdAt.toDate() : new Date(),
+            };
+        });
+    
+        const recentComments = recentCommentsSnap.docs.map(doc => {
+            const data = doc.data();
+            const timestamp = data.timestamp as Timestamp | undefined;
+            const commentText = typeof data.text === 'string' ? data.text : '';
+            return {
+                id: doc.id,
+                type: 'New Comment' as const,
+                name: data.authorName,
+                detail: `Comment: "${commentText.substring(0, 30)}..."`,
+                date: timestamp ? timestamp.toDate() : new Date(),
+            };
+        });
+    
+        recentActivity = [...recentUsers, ...recentComments]
+            .sort((a, b) => b.date.getTime() - a.date.getTime())
+            .slice(0, 5);
+
+    } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        // Data will remain 0 or empty array, page will render with default values.
+    }
+
+
     return (
         <div className="flex flex-col gap-4">
-            <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
                     Total Posts
                   </CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">1,257</div>
+                  <div className="text-2xl font-bold">{totalPosts}</div>
                   <p className="text-xs text-muted-foreground">
-                    +20.1% from last month
+                    articles published
                   </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    New Comments
+                    Total Comments
                   </CardTitle>
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">+2350</div>
+                  <div className="text-2xl font-bold">{totalComments}</div>
                   <p className="text-xs text-muted-foreground">
-                    +180.1% from last month
+                    comments submitted
                   </p>
                 </CardContent>
               </Card>
@@ -73,9 +131,33 @@ import {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">+12,234</div>
+                  <div className="text-2xl font-bold">{totalUsers}</div>
                   <p className="text-xs text-muted-foreground">
-                    +19% from last month
+                    users signed up
+                  </p>
+                </CardContent>
+              </Card>
+               <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">15,302</div>
+                  <p className="text-xs text-muted-foreground">
+                    (Placeholder Data)
+                  </p>
+                </CardContent>
+              </Card>
+               <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Reads</CardTitle>
+                  <BookOpenCheck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">23,159</div>
+                  <p className="text-xs text-muted-foreground">
+                    (Placeholder Data)
                   </p>
                 </CardContent>
               </Card>
@@ -85,9 +167,9 @@ import {
                   <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">+573</div>
+                  <div className="text-2xl font-bold">12</div>
                   <p className="text-xs text-muted-foreground">
-                    +201 since last hour
+                    (Placeholder Data)
                   </p>
                 </CardContent>
               </Card>
@@ -117,54 +199,20 @@ import {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell>
-                        <div className="font-medium">Liam Johnson</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          liam@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">New Comment</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">2023-06-23</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <div className="font-medium">Olivia Smith</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          olivia@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">New User</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">2023-06-23</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <div className="font-medium">Noah Williams</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          noah@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">New Comment</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">2023-06-24</TableCell>
-                    </TableRow>
-                    <TableRow>
-                       <TableCell>
-                        <div className="font-medium">Emma Brown</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          emma@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">New User</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">2023-06-25</TableCell>
-                    </TableRow>
+                    {recentActivity.map((activity) => (
+                        <TableRow key={activity.id}>
+                        <TableCell>
+                            <div className="font-medium">{activity.name}</div>
+                            <div className="hidden text-sm text-muted-foreground md:inline">
+                            {activity.detail}
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant={activity.type === 'New User' ? 'secondary' : 'outline'}>{activity.type}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{activity.date.toLocaleDateString()}</TableCell>
+                        </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </CardContent>
