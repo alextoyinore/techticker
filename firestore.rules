@@ -4,63 +4,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user has a specific role.
-    function isOneOfRoles(roles) {
+    // Helper function to check if a user has one of several roles
+    function hasAnyRole(roles) {
+      // Use the 'in' operator for cleaner role checking
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in roles;
     }
-    
-    function isSignedIn() {
-      return request.auth != null;
-    }
 
-    // Articles are readable by anyone if published, but only writable by admins/editors/writers.
+    // --- Publicly Readable & Admin Writable Collections ---
+
+    // Articles can be read by public if published, or by staff anytime.
+    // Staff can write.
     match /articles/{articleId} {
-      allow read: if resource.data.status == 'Published';
-      allow write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin', 'editor', 'writer']);
+        allow read: if resource.data.status == 'Published' || hasAnyRole(['admin', 'editor', 'writer']);
+        allow write: if hasAnyRole(['admin', 'editor', 'writer']);
     }
 
-    // Comments can be created by any signed-in user, but are only publicly visible when 'Approved'.
-    // Moderation (update/delete) is restricted to admins/editors.
-    match /comments/{commentId} {
-      allow read: if resource.data.status == 'Approved';
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if isSignedIn() && isOneOfRoles(['admin', 'superadmin', 'editor']);
-    }
-
-    // Users can read their own data. Only superadmins can manage user roles.
-    match /users/{userId} {
-      allow read: if request.auth.uid == userId || isOneOfRoles(['admin', 'superadmin']);
-      // Allow user to create their own doc on signup, and superadmins to edit any.
-      allow write: if request.auth.uid == userId || isOneOfRoles(['superadmin']);
-    }
-
-    // Site settings should only be managed by admins.
-    match /settings/{settingId} {
-        allow read, write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin']);
-    }
-
-    // Categories can be read by anyone, but only managed by admins.
-    match /categories/{categoryId} {
-        allow read: if true;
-        allow write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin']);
-    }
-
-    // Layouts can be read by anyone, managed by admins.
-    match /layouts/{layoutId} {
-        allow read: if true;
-        allow write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin']);
-    }
-    
-    // Widgets can be read by anyone, managed by admins.
-    match /widgets/{widgetId} {
-        allow read: if true;
-        allow write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin']);
-    }
-
-    // Pages are readable by anyone if published, but only writable by admins/editors.
+    // Pages can be read by public if published, or by staff anytime.
+    // Staff can write.
     match /pages/{pageId} {
-      allow read: if resource.data.status == 'Published';
-      allow write: if isSignedIn() && isOneOfRoles(['admin', 'superadmin', 'editor']);
+        allow read: if resource.data.status == 'Published' || hasAnyRole(['admin', 'editor']);
+        allow write: if hasAnyRole(['admin', 'editor']);
+    }
+
+    // Comments can be read by public if approved, or by staff anytime.
+    // Any authenticated user can create a comment (for moderation).
+    // Staff can moderate (update/delete).
+    match /comments/{commentId} {
+        allow read: if resource.data.status == 'Approved' || hasAnyRole(['admin', 'editor']);
+        allow create: if request.auth != null;
+        allow update, delete: if hasAnyRole(['admin', 'editor']);
+    }
+
+    // --- Admin-Only Collections ---
+
+    // Layouts are for site structure, only readable/writable by admins/editors.
+    match /layouts/{layoutId} {
+        allow read, write: if hasAnyRole(['admin', 'editor']);
+    }
+
+    // Widgets are for site structure, only readable/writable by admins/editors.
+    match /widgets/{widgetId} {
+        allow read, write: if hasAnyRole(['admin', 'editor']);
+    }
+
+    // Categories can be read by any content creator, but only managed by admins.
+    match /categories/{categoryId} {
+        allow read: if hasAnyRole(['admin', 'editor', 'writer']);
+        allow write: if hasAnyRole(['admin']);
+    }
+
+    // Users can manage their own data.
+    // Admins/Superadmins can manage any user's data.
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId || hasAnyRole(['admin', 'superadmin']);
     }
   }
 }
