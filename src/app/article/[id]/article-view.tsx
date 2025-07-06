@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'; 
+import { addDoc, collection, serverTimestamp, doc, getDoc, query, where, orderBy, getDocs } from 'firebase/firestore'; 
+import type { Timestamp } from 'firebase/firestore';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,21 +17,81 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { LoaderCircle } from 'lucide-react';
-import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 
 import type { Article, Comment } from './page';
 
 interface ArticleViewProps {
-  article: Article;
-  initialComments: Comment[];
+  articleId: string;
 }
 
-export default function ArticleView({ article, initialComments }: ArticleViewProps) {
+export default function ArticleView({ articleId }: ArticleViewProps) {
   const { user, loading: authLoading } = useAuth();
-  const [comments, setComments] = useState<Comment[]>(initialComments);
+
+  const [article, setArticle] = useState<Article | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchArticleAndComments = async () => {
+        if (!articleId) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const articleRef = doc(db, 'articles', articleId);
+            const articleSnap = await getDoc(articleRef);
+
+            if (!articleSnap.exists() || articleSnap.data()?.status !== 'Published') {
+                setError('Article not found or not published.');
+                return;
+            }
+            
+            const data = articleSnap.data()!;
+            const fetchedArticle: Article = {
+                id: articleSnap.id,
+                title: data.title,
+                authorName: data.authorName,
+                createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
+                content: data.content,
+                status: data.status,
+                featuredImage: data.featuredImage,
+            };
+            setArticle(fetchedArticle);
+
+            const commentsQuery = query(
+                collection(db, 'comments'),
+                where('articleId', '==', articleId),
+                where('status', '==', 'Approved'),
+                orderBy('timestamp', 'desc')
+            );
+                
+            const commentsSnap = await getDocs(commentsQuery);
+            const fetchedComments: Comment[] = commentsSnap.docs.map(doc => {
+                const commentData = doc.data();
+                return {
+                    id: doc.id,
+                    authorName: commentData.authorName,
+                    authorAvatar: commentData.authorAvatar || `https://placehold.co/40x40.png`,
+                    text: commentData.text,
+                    timestamp: (commentData.timestamp as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+                }
+            });
+            setComments(fetchedComments);
+        } catch (e) {
+            console.error("Error fetching article:", e);
+            setError("Failed to load article.");
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    fetchArticleAndComments();
+  }, [articleId]);
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +100,7 @@ export default function ArticleView({ article, initialComments }: ArticleViewPro
     setIsSubmitting(true);
     try {
       const commentData = {
-        articleId: article.id,
+        articleId: articleId,
         text: newComment,
         authorId: user.uid,
         authorName: user.displayName || user.email,
@@ -59,6 +121,38 @@ export default function ArticleView({ article, initialComments }: ArticleViewPro
 
   const formatDate = (isoString: string) => {
     return new Date(isoString).toLocaleDateString();
+  }
+
+  if (loading) {
+    return (
+        <main className="container mx-auto max-w-4xl py-8 px-4 flex-grow">
+            <div className="prose dark:prose-invert lg:prose-xl max-w-none">
+                <Skeleton className="h-12 w-3/4 mb-4" />
+                <Skeleton className="h-4 w-1/2 mb-8" />
+                <Skeleton className="w-full aspect-video my-8 rounded-lg" />
+                <Separator className="my-8" />
+                <div className="space-y-4">
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-6 w-5/6" />
+                </div>
+            </div>
+        </main>
+    );
+  }
+
+  if (error || !article) {
+      return (
+        <main className="flex-grow flex h-[calc(100vh-8rem)] w-full items-center justify-center text-center">
+          <div>
+              <h1 className="text-4xl font-bold">404</h1>
+              <p className="text-muted-foreground">{error || 'Article not found.'}</p>
+              <Button asChild className="mt-4">
+                  <Link href="/">Go Home</Link>
+              </Button>
+          </div>
+        </main>
+      )
   }
 
   return (
