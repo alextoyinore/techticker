@@ -44,6 +44,7 @@ async function getWidgetWithArticles(widgetId: string): Promise<{ widget: Widget
     const config = widget.config;
 
     let articlesQuery = query(collection(db, 'articles'), where('status', '==', 'Published'));
+    let requiresCompositeIndex = false;
 
     if (config && config.value) {
         if (config.type === 'category') {
@@ -53,19 +54,30 @@ async function getWidgetWithArticles(widgetId: string): Promise<{ widget: Widget
              if (!categorySnapshot.empty) {
                  const categoryId = categorySnapshot.docs[0].id;
                  articlesQuery = query(articlesQuery, where('categoryId', '==', categoryId));
+                 requiresCompositeIndex = true;
              } else {
                  return { widget, articles: [] }; // Category not found
              }
         } else if (config.type === 'tag') {
             articlesQuery = query(articlesQuery, where('tags', 'array-contains', config.value));
+            requiresCompositeIndex = true;
         }
     }
 
-    articlesQuery = query(articlesQuery, orderBy('createdAt', 'desc'), limit(config?.limit || 5));
+    // To prevent errors on a fresh Firebase project, we only add 'orderBy' if it doesn't require a composite index.
+    // For sorted results on filtered widgets, a composite index must be created in Firestore.
+    // The Firebase console will provide a link to create it if it's missing.
+    if (!requiresCompositeIndex) {
+        articlesQuery = query(articlesQuery, orderBy('createdAt', 'desc'));
+    }
+    
+    articlesQuery = query(articlesQuery, limit(config?.limit || 5));
+
     const articlesSnapshot = await getDocs(articlesQuery);
     
     const articles = articlesSnapshot.docs.map(doc => {
         const data = doc.data();
+        const ts = data.createdAt as Timestamp;
         return {
             id: doc.id,
             title: data.title,
@@ -73,7 +85,7 @@ async function getWidgetWithArticles(widgetId: string): Promise<{ widget: Widget
             featuredImage: data.featuredImage || 'https://placehold.co/600x400.png',
             url: `/article/${doc.id}`,
             authorName: data.authorName,
-            createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
+            createdAt: ts ? ts.toDate().toISOString() : new Date().toISOString(),
         }
     });
 
